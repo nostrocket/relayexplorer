@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Command, User } from "lucide-react"
+import { Command } from "lucide-react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 import { NavUser } from "@/components/nav-user"
@@ -23,17 +23,26 @@ import { Switch } from "@/components/ui/switch"
 import { RelayConnector } from "@/components/relay-connector"
 import { RelayStatus } from "@/components/relay-status"
 import { useEvents } from "@/hooks/useEvents"
+import { useProfiles } from "@/hooks/useProfiles"
 import { useNostr } from "@/contexts/NostrContext"
 import { mockData } from "@/mock/data"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface AuthorInfo {
   pubkey: string;
   displayName: string;
   shortPubkey: string;
+  avatarUrl?: string;
+  hasProfile: boolean;
 }
 
-// Utility function to extract unique pubkeys from events
-const extractUniquePubkeys = (events: NDKEvent[]): AuthorInfo[] => {
+// Utility function to extract unique pubkeys from events with profile data
+const extractUniquePubkeys = (
+  events: NDKEvent[], 
+  getDisplayName: (pubkey: string) => string,
+  getAvatarUrl: (pubkey: string) => string | null,
+  getProfile: (pubkey: string) => any
+): AuthorInfo[] => {
   const pubkeySet = new Set<string>();
   
   events.forEach(event => {
@@ -44,9 +53,18 @@ const extractUniquePubkeys = (events: NDKEvent[]): AuthorInfo[] => {
   
   return Array.from(pubkeySet).map(pubkey => ({
     pubkey,
-    displayName: pubkey.substring(0, 8) + '...',
-    shortPubkey: pubkey.substring(0, 8)
-  }));
+    displayName: getDisplayName(pubkey),
+    shortPubkey: pubkey.substring(0, 8),
+    avatarUrl: getAvatarUrl(pubkey) || undefined,
+    hasProfile: !!getProfile(pubkey)
+  })).sort((a, b) => {
+    // Prioritize profiles with usernames (hasProfile = true) over truncated pubkeys
+    if (a.hasProfile && !b.hasProfile) return -1;
+    if (!a.hasProfile && b.hasProfile) return 1;
+    
+    // Within each group, sort alphabetically by display name
+    return a.displayName.localeCompare(b.displayName);
+  });
 };
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -62,7 +80,23 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
   
   // Get all events first
   const { events: allEvents, updateFilter } = useEvents({})
-  const uniquePubkeys = React.useMemo(() => extractUniquePubkeys(allEvents), [allEvents])
+  
+  // Get profile management hooks
+  const { requestProfiles, getDisplayName, getAvatarUrl, getProfile } = useProfiles()
+  
+  // Extract unique pubkeys with profile data
+  const uniquePubkeys = React.useMemo(() => 
+    extractUniquePubkeys(allEvents, getDisplayName, getAvatarUrl, getProfile), 
+    [allEvents, getDisplayName, getAvatarUrl, getProfile]
+  )
+  
+  // Request profiles for discovered pubkeys
+  React.useEffect(() => {
+    const pubkeys = uniquePubkeys.map(author => author.pubkey);
+    if (pubkeys.length > 0) {
+      requestProfiles(pubkeys);
+    }
+  }, [uniquePubkeys, requestProfiles]);
   
   // Set default active pubkey to first available pubkey
   React.useEffect(() => {
@@ -112,7 +146,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="scrollbar-hide">
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0">
               <SidebarMenu>
@@ -120,7 +154,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                   <SidebarMenuItem key={authorInfo.pubkey}>
                     <SidebarMenuButton
                       tooltip={{
-                        children: `Author: ${authorInfo.displayName}`,
+                        children: authorInfo.displayName,
                         hidden: false,
                       }}
                       onClick={() => {
@@ -128,10 +162,17 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                         setOpen(true)
                       }}
                       isActive={activePubkey === authorInfo.pubkey}
-                      className="px-2.5 md:px-2"
+                      className="px-2.5 md:px-2 flex items-center gap-2"
                     >
-                      <User />
-                      <span>{authorInfo.displayName}</span>
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage 
+                          src={authorInfo.avatarUrl || `https://robohash.org/${authorInfo.pubkey}`} 
+                        />
+                        <AvatarFallback className="text-xs">
+                          {authorInfo.pubkey.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{authorInfo.displayName}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -152,7 +193,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <RelayStatus />
           <div className="flex w-full items-center justify-between">
             <div className="text-foreground text-base font-medium">
-              {activePubkey ? `Author: ${activePubkey.substring(0, 8)}...` : 'Authors'}
+              {activePubkey ? getDisplayName(activePubkey) : 'Authors'}
             </div>
             <Label className="flex items-center gap-2 text-sm">
               <span>Real-time</span>
