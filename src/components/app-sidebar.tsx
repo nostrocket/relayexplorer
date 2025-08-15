@@ -19,13 +19,18 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Switch } from "@/components/ui/switch"
-import { mockData } from "@/mock/data"
+import { mockData, type MailItem } from "@/mock/data"
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  onEmailSelect?: (email: MailItem) => void
+}
+
+export function AppSidebar({ onEmailSelect, ...props }: AppSidebarProps) {
   // Note: I'm using state to show active item.
   // IRL you should use the url/router.
   const [activeItem, setActiveItem] = React.useState(mockData.navMain[0])
   const [mails, setMails] = React.useState(mockData.mails)
+  const [selectedEmail, setSelectedEmail] = React.useState<MailItem | null>(null)
   const { setOpen } = useSidebar()
 
   return (
@@ -115,22 +120,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
-              {mails.map((mail) => (
-                <a
-                  href="#"
-                  key={mail.email}
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0"
-                >
+              {mails.map((mail) => {
+                const isSelected = selectedEmail?.email === mail.email
+                return (
+                  <button
+                    key={mail.email}
+                    onClick={() => {
+                      setSelectedEmail(mail)
+                      onEmailSelect?.(mail)
+                    }}
+                    className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors ${
+                      isSelected 
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                        : ''
+                    }`}
+                  >
                   <div className="flex w-full items-center gap-2">
                     <span>{mail.name}</span>{" "}
                     <span className="ml-auto text-xs">{mail.date}</span>
                   </div>
-                  <span className="font-medium">{mail.subject}</span>
-                  <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                    {mail.teaser}
-                  </span>
-                </a>
-              ))}
+                    <span className="font-medium">{mail.subject}</span>
+                    <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
+                      {mail.teaser}
+                    </span>
+                  </button>
+                )
+              })}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>

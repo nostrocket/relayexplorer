@@ -1,5 +1,7 @@
+import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { EmailViewer } from "@/components/email-viewer"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,8 +16,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import type { MailItem } from "@/mock/data"
 
 export default function Page() {
+  const [selectedEmail, setSelectedEmail] = useState<MailItem | null>(null)
   return (
     <SidebarProvider
       style={
@@ -24,7 +28,7 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar />
+      <AppSidebar onEmailSelect={setSelectedEmail} />
       <SidebarInset>
         <header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-4">
           <SidebarTrigger className="-ml-1" />
@@ -47,14 +51,7 @@ export default function Page() {
             <ThemeToggle />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          {Array.from({ length: 24 }).map((_, index) => (
-            <div
-              key={index}
-              className="bg-muted/50 aspect-video h-12 w-full rounded-lg"
-            />
-          ))}
-        </div>
+        <EmailViewer email={selectedEmail} />
       </SidebarInset>
     </SidebarProvider>
   )
