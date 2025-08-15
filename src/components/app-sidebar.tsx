@@ -27,6 +27,7 @@ import { useProfiles } from "@/hooks/useProfiles"
 import { useNostr } from "@/contexts/NostrContext"
 import { mockData } from "@/mock/data"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getRelativeTime } from "@/lib/utils"
 import { EventKindFilter } from "@/components/event-kind-filter"
 
 interface AuthorInfo {
@@ -289,7 +290,9 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                   </div>
                   
                   {/* Events List */}
-                  {events.map((event) => {
+                  {events
+                    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+                    .map((event) => {
                   const isSelected = selectedEvent?.id === event.id
                   const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
                   const content = event.content || 'No content'
@@ -312,7 +315,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                       <div className="flex w-full items-center gap-2">
                         <span className="font-mono text-xs">{authorShort}</span>
                         <span className="ml-auto text-xs">
-                          {createdAt.toLocaleTimeString()}
+                          {getRelativeTime(createdAt)}
                         </span>
                       </div>
                       <span className="font-medium">Kind {event.kind}</span>

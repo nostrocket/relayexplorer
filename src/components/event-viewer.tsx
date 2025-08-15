@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Copy, Download, Eye, EyeOff, ExternalLink } from "lucide-react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
+import { getRelativeTime } from "@/lib/utils"
 
 interface EventViewerProps {
   event: NDKEvent | null
@@ -89,8 +90,7 @@ export function EventViewer({ event }: EventViewerProps) {
           </div>
         </div>
         <div className="text-sm text-muted-foreground">
-          <div>{createdAt.toLocaleDateString()}</div>
-          <div>{createdAt.toLocaleTimeString()}</div>
+          <div>{getRelativeTime(createdAt)}</div>
         </div>
       </div>
 
