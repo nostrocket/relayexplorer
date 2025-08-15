@@ -12,36 +12,46 @@ export const useEvents = (initialFilter?: EventFilter) => {
   const [subscription, setSubscription] = useState<NDKSubscription | null>(null);
   const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
 
+  // Static subscription filter - gets ALL events, no server-side filtering
   const ndkFilter = useMemo((): NDKFilter => {
     const ndkFilter: NDKFilter = {};
     
-    // Only include server-side filters (not kinds - that's client-side only)
-    if (filter.authors) {
-      ndkFilter.authors = filter.authors;
-    }
-    
-    if (filter.dateRange?.from) {
-      ndkFilter.since = Math.floor(filter.dateRange.from.getTime() / 1000);
-    }
-    
-    if (filter.dateRange?.to) {
-      ndkFilter.until = Math.floor(filter.dateRange.to.getTime() / 1000);
-    }
-
-    // Default limit to prevent overwhelming the UI
-    //ndkFilter.limit = 100;
+    // No filters - get everything and filter client-side only
+    // Optionally add a limit to prevent overwhelming the UI
+    //ndkFilter.limit = 1000;
     
     return ndkFilter;
-  }, [filter.authors, filter.dateRange]);
+  }, []); // No dependencies - filter never changes
 
   const filteredEvents = useMemo(() => {
     let filtered = [...events];
     
+    // Apply authors filter locally (client-side only)
+    if (filter.authors && filter.authors.length > 0) {
+      filtered = filtered.filter(event => 
+        filter.authors!.includes(event.pubkey || '')
+      );
+    }
+    
     // Apply kinds filter locally (client-side only)
-    // Only filter if kinds array exists and has items
     if (filter.kinds && filter.kinds.length > 0) {
       filtered = filtered.filter(event => 
         filter.kinds!.includes(event.kind || 0)
+      );
+    }
+    
+    // Apply date range filter locally (client-side only)
+    if (filter.dateRange?.from) {
+      const fromTimestamp = Math.floor(filter.dateRange.from.getTime() / 1000);
+      filtered = filtered.filter(event => 
+        (event.created_at || 0) >= fromTimestamp
+      );
+    }
+    
+    if (filter.dateRange?.to) {
+      const toTimestamp = Math.floor(filter.dateRange.to.getTime() / 1000);
+      filtered = filtered.filter(event => 
+        (event.created_at || 0) <= toTimestamp
       );
     }
     
@@ -58,7 +68,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
     filtered.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
     
     return filtered;
-  }, [events, filter.kinds, filter.search]);
+  }, [events, filter.authors, filter.kinds, filter.dateRange, filter.search]);
 
   const subscribeToEvents = useCallback(() => {
     console.log('subscribeToEvents called', { isConnected, ndk: !!ndk, filter: ndkFilter });
