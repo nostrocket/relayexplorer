@@ -60,8 +60,8 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
   const { setOpen } = useSidebar()
   const { isConnected } = useNostr()
   
-  // First get all events to extract pubkeys, then filter by active pubkey
-  const { events: allEvents } = useEvents({})
+  // Get all events first
+  const { events: allEvents, updateFilter } = useEvents({})
   const uniquePubkeys = React.useMemo(() => extractUniquePubkeys(allEvents), [allEvents])
   
   // Set default active pubkey to first available pubkey
@@ -71,18 +71,16 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
     }
   }, [uniquePubkeys, activePubkey])
   
-  // Get filtered events for the active pubkey
-  const { events, updateFilter } = useEvents({ 
-    authors: activePubkey ? [activePubkey] : undefined 
-  })
+  // Filter events locally by active pubkey
+  const events = React.useMemo(() => {
+    if (!activePubkey) return allEvents;
+    return allEvents.filter(event => event.pubkey === activePubkey);
+  }, [allEvents, activePubkey])
 
-  // Update filter when active pubkey changes
+  // Update filter when search term changes
   React.useEffect(() => {
-    updateFilter({ 
-      authors: activePubkey ? [activePubkey] : undefined, 
-      search: searchTerm 
-    });
-  }, [activePubkey, searchTerm, updateFilter]);
+    updateFilter({ search: searchTerm });
+  }, [searchTerm, updateFilter]);
 
   return (
     <Sidebar
