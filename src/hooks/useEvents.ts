@@ -32,7 +32,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
     }
 
     // Default limit to prevent overwhelming the UI
-    ndkFilter.limit = 100;
+    //ndkFilter.limit = 100;
     
     return ndkFilter;
   }, [filter]);
