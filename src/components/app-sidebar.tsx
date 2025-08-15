@@ -27,6 +27,7 @@ import { useProfiles } from "@/hooks/useProfiles"
 import { useNostr } from "@/contexts/NostrContext"
 import { mockData } from "@/mock/data"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { EventKindFilter } from "@/components/event-kind-filter"
 
 interface AuthorInfo {
   pubkey: string;
@@ -75,6 +76,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
   const [activePubkey, setActivePubkey] = React.useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
+  const [selectedKinds, setSelectedKinds] = React.useState<number[]>([])
   const { setOpen } = useSidebar()
   const { isConnected } = useNostr()
   
@@ -98,12 +100,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
     }
   }, [uniquePubkeys, requestProfiles]);
   
-  // Set default active pubkey to first available pubkey
-  React.useEffect(() => {
-    if (!activePubkey && uniquePubkeys.length > 0) {
-      setActivePubkey(uniquePubkeys[0].pubkey)
-    }
-  }, [uniquePubkeys, activePubkey])
+  // Note: No auto-selection of pubkey - "All Profiles" is default
   
   // Filter events locally by active pubkey
   const events = React.useMemo(() => {
@@ -111,10 +108,13 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
     return allEvents.filter(event => event.pubkey === activePubkey);
   }, [allEvents, activePubkey])
 
-  // Update filter when search term changes
+  // Update filter when search term or kinds change
   React.useEffect(() => {
-    updateFilter({ search: searchTerm });
-  }, [searchTerm, updateFilter]);
+    updateFilter({ 
+      search: searchTerm,
+      kinds: selectedKinds.length > 0 ? selectedKinds : []
+    });
+  }, [searchTerm, selectedKinds, updateFilter]);
 
   return (
     <Sidebar
@@ -150,6 +150,26 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0">
               <SidebarMenu>
+                {/* Show All Profiles Button */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={{
+                      children: "Show events from all profiles",
+                      hidden: false,
+                    }}
+                    onClick={() => {
+                      setActivePubkey(null)
+                      setOpen(true)
+                    }}
+                    isActive={activePubkey === null}
+                    className="px-2.5 md:px-2 flex items-center gap-2 font-medium"
+                  >
+                    <div className="h-6 w-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
+                      All
+                    </div>
+                    <span className="truncate">All Profiles</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 {uniquePubkeys.map((authorInfo) => (
                   <SidebarMenuItem key={authorInfo.pubkey}>
                     <SidebarMenuButton
@@ -193,7 +213,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <RelayStatus />
           <div className="flex w-full items-center justify-between">
             <div className="text-foreground text-base font-medium">
-              {activePubkey ? getDisplayName(activePubkey) : 'Authors'}
+              {activePubkey ? getDisplayName(activePubkey) : 'All Profiles'}
             </div>
             <Label className="flex items-center gap-2 text-sm">
               <span>Real-time</span>
@@ -204,6 +224,10 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
             placeholder="Search events..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <EventKindFilter
+            selectedKinds={selectedKinds}
+            onKindsChange={setSelectedKinds}
           />
         </SidebarHeader>
         <SidebarContent>
@@ -218,7 +242,54 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                   No events found
                 </div>
               ) : (
-                events.map((event) => {
+                <>
+                  {/* Profile Preview */}
+                  <div className="border-b p-4 bg-sidebar-accent/50">
+                    <div className="flex items-start gap-3">
+                      {activePubkey ? (
+                        <>
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage 
+                              src={getAvatarUrl(activePubkey) || `https://robohash.org/${activePubkey}`} 
+                            />
+                            <AvatarFallback className="text-sm">
+                              {activePubkey.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {getDisplayName(activePubkey)}
+                            </div>
+                            {getProfile(activePubkey)?.about && (
+                              <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {getProfile(activePubkey)?.about}
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-1 font-mono">
+                              {activePubkey.substring(0, 16)}...
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-12 w-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                            All
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">
+                              All Profiles
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Showing events from all {uniquePubkeys.length} profile{uniquePubkeys.length !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Events List */}
+                  {events.map((event) => {
                   const isSelected = selectedEvent?.id === event.id
                   const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
                   const content = event.content || 'No content'
@@ -250,7 +321,8 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                       </span>
                     </button>
                   )
-                })
+                  })}
+                </>
               )}
             </SidebarGroupContent>
           </SidebarGroup>

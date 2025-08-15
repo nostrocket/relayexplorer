@@ -10,15 +10,12 @@ export const useEvents = (initialFilter?: EventFilter) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<NDKSubscription | null>(null);
-  const [filter, setFilter] = useState<EventFilter>(initialFilter || { kinds: [1] });
+  const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
 
   const ndkFilter = useMemo((): NDKFilter => {
     const ndkFilter: NDKFilter = {};
     
-    if (filter.kinds) {
-      ndkFilter.kinds = filter.kinds;
-    }
-    
+    // Only include server-side filters (not kinds - that's client-side only)
     if (filter.authors) {
       ndkFilter.authors = filter.authors;
     }
@@ -35,10 +32,18 @@ export const useEvents = (initialFilter?: EventFilter) => {
     //ndkFilter.limit = 100;
     
     return ndkFilter;
-  }, [filter]);
+  }, [filter.authors, filter.dateRange]);
 
   const filteredEvents = useMemo(() => {
     let filtered = [...events];
+    
+    // Apply kinds filter locally (client-side only)
+    // Only filter if kinds array exists and has items
+    if (filter.kinds && filter.kinds.length > 0) {
+      filtered = filtered.filter(event => 
+        filter.kinds!.includes(event.kind || 0)
+      );
+    }
     
     // Apply search filter locally
     if (filter.search) {
@@ -53,7 +58,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
     filtered.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
     
     return filtered;
-  }, [events, filter.search]);
+  }, [events, filter.kinds, filter.search]);
 
   const subscribeToEvents = useCallback(() => {
     console.log('subscribeToEvents called', { isConnected, ndk: !!ndk, filter: ndkFilter });
