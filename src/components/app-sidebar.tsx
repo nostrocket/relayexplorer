@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Command, FileText, User, Heart, Repeat, Zap, MessageCircle } from "lucide-react"
+import { Command, User } from "lucide-react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 import { NavUser } from "@/components/nav-user"
@@ -26,37 +26,63 @@ import { useEvents } from "@/hooks/useEvents"
 import { useNostr } from "@/contexts/NostrContext"
 import { mockData } from "@/mock/data"
 
-interface EventKind {
-  kind: number;
-  title: string;
-  icon: React.ComponentType;
+interface AuthorInfo {
+  pubkey: string;
+  displayName: string;
+  shortPubkey: string;
 }
 
-const eventKinds: EventKind[] = [
-  { kind: 1, title: "Text Notes", icon: FileText },
-  { kind: 0, title: "Profiles", icon: User },
-  { kind: 7, title: "Reactions", icon: Heart },
-  { kind: 6, title: "Reposts", icon: Repeat },
-  { kind: 4, title: "DMs", icon: MessageCircle },
-  { kind: 9735, title: "Zaps", icon: Zap },
-];
+// Utility function to extract unique pubkeys from events
+const extractUniquePubkeys = (events: NDKEvent[]): AuthorInfo[] => {
+  const pubkeySet = new Set<string>();
+  
+  events.forEach(event => {
+    if (event.pubkey) {
+      pubkeySet.add(event.pubkey);
+    }
+  });
+  
+  return Array.from(pubkeySet).map(pubkey => ({
+    pubkey,
+    displayName: pubkey.substring(0, 8) + '...',
+    shortPubkey: pubkey.substring(0, 8)
+  }));
+};
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onEventSelect?: (event: NDKEvent) => void
 }
 
 export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
-  const [activeKind, setActiveKind] = React.useState<EventKind>(eventKinds[0])
+  const [activePubkey, setActivePubkey] = React.useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
   const { setOpen } = useSidebar()
   const { isConnected } = useNostr()
-  const { events, updateFilter } = useEvents({ kinds: [activeKind.kind] })
-
-  // Update filter when active kind changes
+  
+  // First get all events to extract pubkeys, then filter by active pubkey
+  const { events: allEvents } = useEvents({})
+  const uniquePubkeys = React.useMemo(() => extractUniquePubkeys(allEvents), [allEvents])
+  
+  // Set default active pubkey to first available pubkey
   React.useEffect(() => {
-    updateFilter({ kinds: [activeKind.kind], search: searchTerm });
-  }, [activeKind, searchTerm, updateFilter]);
+    if (!activePubkey && uniquePubkeys.length > 0) {
+      setActivePubkey(uniquePubkeys[0].pubkey)
+    }
+  }, [uniquePubkeys, activePubkey])
+  
+  // Get filtered events for the active pubkey
+  const { events, updateFilter } = useEvents({ 
+    authors: activePubkey ? [activePubkey] : undefined 
+  })
+
+  // Update filter when active pubkey changes
+  React.useEffect(() => {
+    updateFilter({ 
+      authors: activePubkey ? [activePubkey] : undefined, 
+      search: searchTerm 
+    });
+  }, [activePubkey, searchTerm, updateFilter]);
 
   return (
     <Sidebar
@@ -92,22 +118,22 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0">
               <SidebarMenu>
-                {eventKinds.map((eventKind) => (
-                  <SidebarMenuItem key={eventKind.kind}>
+                {uniquePubkeys.map((authorInfo) => (
+                  <SidebarMenuItem key={authorInfo.pubkey}>
                     <SidebarMenuButton
                       tooltip={{
-                        children: eventKind.title,
+                        children: `Author: ${authorInfo.displayName}`,
                         hidden: false,
                       }}
                       onClick={() => {
-                        setActiveKind(eventKind)
+                        setActivePubkey(authorInfo.pubkey)
                         setOpen(true)
                       }}
-                      isActive={activeKind?.kind === eventKind.kind}
+                      isActive={activePubkey === authorInfo.pubkey}
                       className="px-2.5 md:px-2"
                     >
-                      <eventKind.icon />
-                      <span>{eventKind.title}</span>
+                      <User />
+                      <span>{authorInfo.displayName}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -128,7 +154,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <RelayStatus />
           <div className="flex w-full items-center justify-between">
             <div className="text-foreground text-base font-medium">
-              {activeKind?.title}
+              {activePubkey ? `Author: ${activePubkey.substring(0, 8)}...` : 'Authors'}
             </div>
             <Label className="flex items-center gap-2 text-sm">
               <span>Real-time</span>
