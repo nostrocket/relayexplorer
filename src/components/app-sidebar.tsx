@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Command } from "lucide-react"
+import { Command, FileText, User, Heart, Repeat, Zap, MessageCircle } from "lucide-react"
+import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 import { NavUser } from "@/components/nav-user"
 import { Label } from "@/components/ui/label"
@@ -19,19 +20,43 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Switch } from "@/components/ui/switch"
-import { mockData, type MailItem } from "@/mock/data"
+import { RelayConnector } from "@/components/relay-connector"
+import { RelayStatus } from "@/components/relay-status"
+import { useEvents } from "@/hooks/useEvents"
+import { useNostr } from "@/contexts/NostrContext"
+import { mockData } from "@/mock/data"
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  onEmailSelect?: (email: MailItem) => void
+interface EventKind {
+  kind: number;
+  title: string;
+  icon: React.ComponentType;
 }
 
-export function AppSidebar({ onEmailSelect, ...props }: AppSidebarProps) {
-  // Note: I'm using state to show active item.
-  // IRL you should use the url/router.
-  const [activeItem, setActiveItem] = React.useState(mockData.navMain[0])
-  const [mails, setMails] = React.useState(mockData.mails)
-  const [selectedEmail, setSelectedEmail] = React.useState<MailItem | null>(null)
+const eventKinds: EventKind[] = [
+  { kind: 1, title: "Text Notes", icon: FileText },
+  { kind: 0, title: "Profiles", icon: User },
+  { kind: 7, title: "Reactions", icon: Heart },
+  { kind: 6, title: "Reposts", icon: Repeat },
+  { kind: 4, title: "DMs", icon: MessageCircle },
+  { kind: 9735, title: "Zaps", icon: Zap },
+];
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  onEventSelect?: (event: NDKEvent) => void
+}
+
+export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
+  const [activeKind, setActiveKind] = React.useState<EventKind>(eventKinds[0])
+  const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)
+  const [searchTerm, setSearchTerm] = React.useState('')
   const { setOpen } = useSidebar()
+  const { isConnected } = useNostr()
+  const { events, updateFilter } = useEvents({ kinds: [activeKind.kind] })
+
+  // Update filter when active kind changes
+  React.useEffect(() => {
+    updateFilter({ kinds: [activeKind.kind], search: searchTerm });
+  }, [activeKind, searchTerm, updateFilter]);
 
   return (
     <Sidebar
@@ -55,8 +80,8 @@ export function AppSidebar({ onEmailSelect, ...props }: AppSidebarProps) {
                     <Command className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">Acme Inc</span>
-                    <span className="truncate text-xs">Enterprise</span>
+                    <span className="truncate font-medium">Nostr Relay</span>
+                    <span className="truncate text-xs">Explorer</span>
                   </div>
                 </a>
               </SidebarMenuButton>
@@ -67,29 +92,22 @@ export function AppSidebar({ onEmailSelect, ...props }: AppSidebarProps) {
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0">
               <SidebarMenu>
-                {mockData.navMain.map((item) => (
-                  <SidebarMenuItem key={item.title}>
+                {eventKinds.map((eventKind) => (
+                  <SidebarMenuItem key={eventKind.kind}>
                     <SidebarMenuButton
                       tooltip={{
-                        children: item.title,
+                        children: eventKind.title,
                         hidden: false,
                       }}
                       onClick={() => {
-                        setActiveItem(item)
-                        const mail = mockData.mails.sort(() => Math.random() - 0.5)
-                        setMails(
-                          mail.slice(
-                            0,
-                            Math.max(5, Math.floor(Math.random() * 10) + 1)
-                          )
-                        )
+                        setActiveKind(eventKind)
                         setOpen(true)
                       }}
-                      isActive={activeItem?.title === item.title}
+                      isActive={activeKind?.kind === eventKind.kind}
                       className="px-2.5 md:px-2"
                     >
-                      <item.icon />
-                      <span>{item.title}</span>
+                      <eventKind.icon />
+                      <span>{eventKind.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -106,46 +124,69 @@ export function AppSidebar({ onEmailSelect, ...props }: AppSidebarProps) {
       {/* We disable collapsible and let it fill remaining space */}
       <Sidebar collapsible="none" className="hidden flex-1 md:flex">
         <SidebarHeader className="gap-3.5 border-b p-4">
+          <RelayConnector />
+          <RelayStatus />
           <div className="flex w-full items-center justify-between">
             <div className="text-foreground text-base font-medium">
-              {activeItem?.title}
+              {activeKind?.title}
             </div>
             <Label className="flex items-center gap-2 text-sm">
-              <span>Unreads</span>
-              <Switch className="shadow-none" />
+              <span>Real-time</span>
+              <Switch className="shadow-none" defaultChecked />
             </Label>
           </div>
-          <SidebarInput placeholder="Type to search..." />
+          <SidebarInput 
+            placeholder="Search events..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
-              {mails.map((mail) => {
-                const isSelected = selectedEmail?.email === mail.email
-                return (
-                  <button
-                    key={mail.email}
-                    onClick={() => {
-                      setSelectedEmail(mail)
-                      onEmailSelect?.(mail)
-                    }}
-                    className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors ${
-                      isSelected 
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                        : ''
-                    }`}
-                  >
-                  <div className="flex w-full items-center gap-2">
-                    <span>{mail.name}</span>{" "}
-                    <span className="ml-auto text-xs">{mail.date}</span>
-                  </div>
-                    <span className="font-medium">{mail.subject}</span>
-                    <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                      {mail.teaser}
-                    </span>
-                  </button>
-                )
-              })}
+              {!isConnected ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Connect to a relay to view events
+                </div>
+              ) : events.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  No events found
+                </div>
+              ) : (
+                events.map((event) => {
+                  const isSelected = selectedEvent?.id === event.id
+                  const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
+                  const content = event.content || 'No content'
+                  const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content
+                  const authorShort = event.pubkey ? event.pubkey.substring(0, 8) + '...' : 'Unknown'
+                  
+                  return (
+                    <button
+                      key={event.id}
+                      onClick={() => {
+                        setSelectedEvent(event)
+                        onEventSelect?.(event)
+                      }}
+                      className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors ${
+                        isSelected 
+                          ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                          : ''
+                      }`}
+                    >
+                      <div className="flex w-full items-center gap-2">
+                        <span className="font-mono text-xs">{authorShort}</span>
+                        <span className="ml-auto text-xs">
+                          {createdAt.toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <span className="font-medium">Kind {event.kind}</span>
+                      <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
+                        {shortContent}
+                      </span>
+                    </button>
+                  )
+                })
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>

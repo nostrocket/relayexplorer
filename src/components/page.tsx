@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { EmailViewer } from "@/components/email-viewer"
+import { EventViewer } from "@/components/event-viewer"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,10 +16,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import type { MailItem } from "@/mock/data"
+import { useNostr } from "@/contexts/NostrContext"
+import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 export default function Page() {
-  const [selectedEmail, setSelectedEmail] = useState<MailItem | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<NDKEvent | null>(null)
+  const { relayUrl, relayMetadata } = useNostr()
   return (
     <SidebarProvider
       style={
@@ -28,7 +30,7 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar onEmailSelect={setSelectedEmail} />
+      <AppSidebar onEventSelect={setSelectedEvent} />
       <SidebarInset>
         <header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-4">
           <SidebarTrigger className="-ml-1" />
@@ -39,11 +41,13 @@ export default function Page() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">All Inboxes</BreadcrumbLink>
+                <BreadcrumbLink href="#">Nostr Relays</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Inbox</BreadcrumbPage>
+                <BreadcrumbPage>
+                  {relayMetadata?.name || (relayUrl ? 'Relay Explorer' : 'Not Connected')}
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -51,7 +55,7 @@ export default function Page() {
             <ThemeToggle />
           </div>
         </header>
-        <EmailViewer email={selectedEmail} />
+        <EventViewer event={selectedEvent} />
       </SidebarInset>
     </SidebarProvider>
   )
