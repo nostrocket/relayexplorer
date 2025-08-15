@@ -39,7 +39,7 @@ export default function Page() {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString())
   }, [sidebarWidth])
 
-  const startResize = useCallback((e: React.MouseEvent) => {
+  const startResize = useCallback((_e: React.MouseEvent) => {
     isResizing.current = true
     
     const handleMouseMove = (e: MouseEvent) => {
