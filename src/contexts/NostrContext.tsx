@@ -91,26 +91,11 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       setNdk(newNdk);
 
-      // Connect to the relay with timeout
-      const connectPromise = newNdk.connect(10000);
+      // Connect to the relay with a generous timeout
+      const connectPromise = newNdk.connect(30000); // 30 second timeout
       
-      // Set up a timer to check connection status
-      const connectionCheckTimer = setTimeout(() => {
-        const connectedRelays = Array.from(newNdk.pool.relays.values()).filter(
-          relay => relay.status === 1 // Connected status
-        );
-        
-        if (connectedRelays.length === 0) {
-          console.warn('Connection timeout - no relays connected');
-          setConnectionError('Connection timeout');
-          setConnectionStatus('error');
-          setIsConnected(false);
-        }
-      }, 15000);
-      
-      // Don't await here to avoid blocking the UI
+      // Don't set any additional timers - let NDK handle the connection lifecycle
       connectPromise.catch(error => {
-        clearTimeout(connectionCheckTimer);
         console.error('Failed to connect to relay:', error);
         setConnectionError(error instanceof Error ? error.message : 'Connection failed');
         setConnectionStatus('error');
