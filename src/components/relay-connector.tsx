@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useNostr } from '@/contexts/NostrContext';
 import { useRelay } from '@/hooks/useRelay';
 import { Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
+import { RelayCombobox } from './relay-combobox';
 
 export const RelayConnector: React.FC = () => {
   const [inputUrl, setInputUrl] = useState('wss://relay.damus.io');
@@ -60,12 +60,11 @@ export const RelayConnector: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Input
-          placeholder="Enter relay URL (e.g., wss://relay.damus.io)"
+        <RelayCombobox
           value={inputUrl}
-          onChange={(e) => setInputUrl(e.target.value)}
+          onValueChange={setInputUrl}
           disabled={connectionStatus === 'connecting'}
-          className="flex-1"
+          placeholder="Enter relay URL or select from popular relays..."
         />
         <Button 
           onClick={handleConnect}
