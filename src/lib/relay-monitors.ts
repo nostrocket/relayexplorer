@@ -1,5 +1,5 @@
 import NDK, { NDKEvent } from '@nostr-dev-kit/ndk';
-import type { NDKFilter } from '@nostr-dev-kit/ndk';
+import type { NDKFilter, NDKKind } from '@nostr-dev-kit/ndk';
 import type { RelayMonitor } from '@/types/app';
 
 export class RelayMonitorManager {
@@ -13,13 +13,23 @@ export class RelayMonitorManager {
 
   async discoverMonitors(): Promise<RelayMonitor[]> {
     try {
+      // Check if we have any connected relays
+      const connectedRelays = Array.from(this.ndk.pool?.relays?.values() || [])
+        .filter(relay => relay.status === 1); // 1 = connected
+      
+      if (connectedRelays.length === 0) {
+        console.warn('No relays connected, cannot discover monitors');
+        return Array.from(this.monitors.values()); // Return cached monitors if any
+      }
+
       // Query for kind 10166 events (Monitor Info)
       const filter: NDKFilter = {
-        kinds: [10166] as any,
+        kinds: [10166 as NDKKind],
         limit: 100,
         since: Math.floor((Date.now() - this.MONITOR_CACHE_DURATION) / 1000)
       };
 
+      console.log(`Fetching monitor info from ${connectedRelays.length} connected relays`);
       const events = await this.ndk.fetchEvents(filter);
       const newMonitors: RelayMonitor[] = [];
 
@@ -31,10 +41,11 @@ export class RelayMonitorManager {
         }
       }
 
+      console.log(`Discovered ${newMonitors.length} new monitors, ${this.monitors.size} total cached`);
       return Array.from(this.monitors.values());
     } catch (error) {
       console.warn('Failed to discover relay monitors:', error);
-      return [];
+      return Array.from(this.monitors.values()); // Return cached monitors as fallback
     }
   }
 

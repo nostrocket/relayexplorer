@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { NIP66RelayDiscovery } from '@/lib/nip66-relay-discovery';
+import { NostrWatchRelayDiscovery } from '@/lib/nostr-watch-relay-discovery';
 import type { RelayDiscoveryState, NIP66Relay } from '@/types/app';
 
 export const useNIP66RelayDiscovery = () => {
@@ -11,36 +11,27 @@ export const useNIP66RelayDiscovery = () => {
     lastUpdated: null
   });
   
-  const discoveryRef = useRef<NIP66RelayDiscovery | null>(null);
+  const discoveryRef = useRef<NostrWatchRelayDiscovery | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize discovery service immediately
   useEffect(() => {
     if (!discoveryRef.current) {
-      discoveryRef.current = new NIP66RelayDiscovery();
+      discoveryRef.current = new NostrWatchRelayDiscovery();
     }
   }, []);
 
   const discoverRelays = useCallback(async (): Promise<void> => {
     if (!discoveryRef.current) {
-      console.warn('NIP-66 discovery service not initialized');
+      console.warn('nostr.watch discovery service not initialized');
       return;
     }
 
-    try {
-      // Use progressive discovery with real-time updates
-      // Don't override the state here - let the progress callback handle it
-      await discoveryRef.current.discoverRelays((progressState) => {
-        setState(progressState);
-      });
-    } catch (error) {
-      console.error('Failed to discover relays:', error);
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }));
-    }
+    // The NostrWatchRelayDiscovery service handles all errors internally
+    // and never throws - it always returns valid state with fallbacks
+    await discoveryRef.current.discoverRelays((progressState) => {
+      setState(progressState);
+    });
   }, []);
 
   // Auto-discover relays when discovery service is initialized
@@ -60,7 +51,7 @@ export const useNIP66RelayDiscovery = () => {
       // Refresh every 30 minutes
       refreshIntervalRef.current = setInterval(() => {
         if (discoveryRef.current && !state.loading) {
-          console.log('Performing periodic relay discovery refresh');
+          console.log('Performing periodic nostr.watch relay refresh');
           discoverRelays();
         }
       }, 30 * 60 * 1000);

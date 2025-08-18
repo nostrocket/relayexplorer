@@ -1,5 +1,5 @@
-import NDK, { NDKEvent } from '@nostr-dev-kit/ndk';
-import type { NDKFilter } from '@nostr-dev-kit/ndk';
+import NDK, { NDKEvent, NDKRelayStatus } from '@nostr-dev-kit/ndk';
+import type { NDKFilter, NDKKind } from '@nostr-dev-kit/ndk';
 import type { NIP66Relay, RelayMetadata, RelayDiscoveryState, RelayMonitor } from '@/types/app';
 import { RelayMonitorManager } from './relay-monitors';
 import { popularRelays } from './relay-data';
@@ -11,7 +11,10 @@ const BOOTSTRAP_RELAYS = [
   'wss://relay.primal.net',
   'wss://nostr.mom',
   'wss://relay.snort.social',
-  'wss://offchain.pub'
+  'wss://offchain.pub',
+  'wss://nostr.bitcoiner.social',
+  'wss://relay.nostr.net',
+  'wss://purplepag.es'
 ];
 
 export class NIP66RelayDiscovery {
@@ -36,18 +39,34 @@ export class NIP66RelayDiscovery {
         explicitRelayUrls: BOOTSTRAP_RELAYS
       });
 
-      // Start connecting to bootstrap relays (don't wait for all)
-      this.discoveryNdk.connect(5000).catch(error => {
+      // Start connecting to bootstrap relays - continue regardless of failures
+      console.log(`Connecting to ${BOOTSTRAP_RELAYS.length} bootstrap relays...`);
+      
+      // Start connection process but don't fail if some relays don't connect
+      this.discoveryNdk.connect(8000).catch(error => {
         console.warn('Some bootstrap relays failed to connect:', error);
       });
+      
+      // Wait a reasonable time for connections to establish
+      await new Promise(resolve => setTimeout(resolve, 4000));
+      
+      // Check how many relays connected
+      const connectedRelays = Array.from(this.discoveryNdk.pool?.relays?.values() || [])
+        .filter(relay => relay.status === NDKRelayStatus.CONNECTED);
+      
+      console.log(`Connected to ${connectedRelays.length}/${BOOTSTRAP_RELAYS.length} bootstrap relays`);
+      
+      // Continue regardless of how many connected (even if zero)
+      // The discovery methods will handle the case of no connections gracefully
       
       this.monitorManager = new RelayMonitorManager(this.discoveryNdk);
       this.isInitialized = true;
       
       console.log('NIP-66 discovery initialized - will discover progressively');
     } catch (error) {
-      console.error('Failed to initialize NIP-66 discovery:', error);
-      // Continue without discovery - will fall back to hardcoded relays
+      console.warn('NIP-66 discovery initialization encountered issues:', error);
+      console.log('Continuing with hardcoded relays only');
+      // Don't null out the instances - let them continue working with whatever they have
     }
   }
 
@@ -79,8 +98,8 @@ export class NIP66RelayDiscovery {
       this.startProgressiveDiscovery(state, onProgressUpdate);
       
     } catch (error) {
-      console.error('Failed to start relay discovery:', error);
-      state.error = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('Relay discovery encountered issues, continuing with hardcoded relays:', error);
+      // Don't set error state - this is expected behavior when relays are unavailable
       state.loading = false;
     }
 
@@ -110,10 +129,21 @@ export class NIP66RelayDiscovery {
       
       // Create filter for relay discovery events
       const filter: NDKFilter = {
-        kinds: [30166] as any,
+        kinds: [30166 as NDKKind],
         ...(monitorPubkeys && { authors: monitorPubkeys }),
         since: Math.floor((Date.now() - this.MAX_RELAY_AGE) / 1000)
       };
+
+      // Check connected relays before starting subscription
+      const connectedRelays = Array.from(this.discoveryNdk.pool?.relays?.values() || [])
+        .filter(relay => relay.status === NDKRelayStatus.CONNECTED);
+      
+      if (connectedRelays.length === 0) {
+        console.warn('No relays connected yet; subscribing and waiting for connections...');
+        // Do NOT return; proceed to subscribe so we receive events as soon as relays connect
+      } else {
+        console.log(`Starting subscription with ${connectedRelays.length} connected relays`);
+      }
 
       // Use subscription for progressive updates
       const subscription = this.discoveryNdk.subscribe(filter);
@@ -153,6 +183,17 @@ export class NIP66RelayDiscovery {
         subscription.stop();
       });
 
+      // Handle subscription close/errors via the close event
+      subscription.on('close', () => {
+        if (state.loading) {
+          console.warn('Subscription closed unexpectedly during discovery');
+          state.loading = false;
+          if (onProgressUpdate) {
+            onProgressUpdate({ ...state });
+          }
+        }
+      });
+
       // Set a timeout to stop loading state even if we don't get EOSE
       setTimeout(() => {
         if (state.loading) {
@@ -166,8 +207,8 @@ export class NIP66RelayDiscovery {
       }, 15000); // 15 second timeout
 
     } catch (error) {
-      console.error('Progressive discovery failed:', error);
-      state.error = error instanceof Error ? error.message : 'Discovery failed';
+      console.warn('Progressive discovery encountered issues, using available data:', error);
+      // Don't set error state - we still have hardcoded relays available
       state.loading = false;
       if (onProgressUpdate) {
         onProgressUpdate({ ...state });
