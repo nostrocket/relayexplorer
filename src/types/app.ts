@@ -35,3 +35,35 @@ export interface RelayMetadata {
     payment_required?: boolean;
   };
 }
+
+export interface RelayMonitor {
+  pubkey: string;
+  frequency?: number;
+  timeout?: number;
+  lastSeen: Date;
+  reliability: number; // 0-1 score based on consistency
+}
+
+export interface NIP66Relay {
+  url: string;
+  name?: string;
+  description?: string;
+  status: 'online' | 'offline' | 'unknown';
+  lastChecked: Date;
+  nips?: number[];
+  monitors: RelayMonitor[];
+  confidence: number; // 0-1 based on monitor consensus
+  metadata?: RelayMetadata;
+  geographic?: {
+    country?: string;
+    city?: string;
+  };
+}
+
+export interface RelayDiscoveryState {
+  relays: NIP66Relay[];
+  monitors: RelayMonitor[];
+  loading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+}
