@@ -1,4 +1,6 @@
-# Nostr Relay Browser 🚀
+# Nostr Relay Browser
+
+Discover the hidden gems and thriving communities you've been missing across Nostr's vast relay ecosystem with this powerful tool, transforming your limited feed into an infinite universe of authentic human connections.
 
 **Ever wondered what's happening inside a Nostr relay?** This sleek browser app transforms any Nostr relay into an explorable universe of decentralized content, wrapped in a beautiful email-client-inspired interface that makes browsing events as intuitive as checking your inbox.
 
