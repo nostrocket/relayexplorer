@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useNostr } from '@/contexts/NostrContext';
 import { useRelay } from '@/hooks/useRelay';
-import { Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { RelayCombobox } from './relay-combobox';
 
 export const RelayConnector: React.FC = () => {
   const [inputUrl, setInputUrl] = useState('wss://relay.damus.io');
-  const { isConnected, connectionError, relayUrl, connect, disconnect, connectionStatus } = useNostr();
+  const { isConnected, connect, disconnect, connectionStatus } = useNostr();
   const { validateRelayUrl } = useRelay();
 
   const handleConnect = async () => {
@@ -24,38 +23,6 @@ export const RelayConnector: React.FC = () => {
     }
   };
 
-  const getStatusBadge = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return (
-          <Badge variant="success" className="gap-1">
-            <Wifi className="h-3 w-3" />
-            Connected
-          </Badge>
-        );
-      case 'connecting':
-        return (
-          <Badge variant="secondary" className="gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Connecting
-          </Badge>
-        );
-      case 'error':
-        return (
-          <Badge variant="destructive" className="gap-1">
-            <AlertCircle className="h-3 w-3" />
-            Error
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="gap-1">
-            <WifiOff className="h-3 w-3" />
-            Disconnected
-          </Badge>
-        );
-    }
-  };
 
   return (
     <div className="space-y-3">
@@ -80,21 +47,6 @@ export const RelayConnector: React.FC = () => {
           'Connect'
         )}
       </Button>
-      
-      <div className="flex items-center justify-between">
-        {getStatusBadge()}
-        {relayUrl && (
-          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-            {relayUrl}
-          </span>
-        )}
-      </div>
-      
-      {connectionError && (
-        <div className="text-xs text-destructive">
-          {connectionError}
-        </div>
-      )}
     </div>
   );
 };
