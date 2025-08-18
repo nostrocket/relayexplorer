@@ -1,69 +1,45 @@
-# React + TypeScript + Vite
+# Nostr Relay Browser 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Ever wondered what's happening inside a Nostr relay?** This sleek browser app transforms any Nostr relay into an explorable universe of decentralized content, wrapped in a beautiful email-client-inspired interface that makes browsing events as intuitive as checking your inbox.
 
-Currently, two official plugins are available:
+Connect to any relay with a single URL, watch real-time events stream in, and explore the raw pulse of the decentralized social web with powerful filtering, search, and export capabilities—all running entirely in your browser with zero backend dependencies.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ What Makes This Special
 
-## Expanding the ESLint configuration
+- **One-Click Relay Exploration** - Just paste a relay URL and instantly dive into its event stream
+- **Gmail-Inspired UI** - Familiar three-pane layout with sidebar navigation, event timeline, and detailed preview
+- **Real-Time Updates** - Watch events flow in live via WebSocket subscriptions
+- **Smart Filtering** - Browse by event types (notes, profiles, reactions), authors, or time ranges
+- **Developer-Friendly** - Export events as JSON, view raw event data, and inspect relay metadata
+- **Privacy-First** - Completely client-side with no tracking, accounts, or data collection
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠 Tech Stack
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Built on a modern foundation:
+- **React 19** + TypeScript for robust development
+- **Vite 7** for lightning-fast builds and development
+- **shadcn/ui** + Tailwind CSS v4 for beautiful, accessible components
+- **NDK/nostr-tools** for Nostr protocol compliance
+- **Responsive design** that works perfectly on mobile and desktop
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 🚀 Quick Start
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone [repository-url]
+cd relay_browser
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Visit `http://localhost:5173` and start exploring the decentralized web!
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🎯 Perfect For
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Nostr Enthusiasts** - Discover what's happening across different relays
+- **Developers** - Debug relay behavior and inspect event structures  
+- **Researchers** - Analyze decentralized social patterns and content flows
+- **Curious Minds** - Experience the raw, unfiltered pulse of Web3 social networking
+
+---
+
+*Join the decentralized revolution - one relay at a time.* 🌐
