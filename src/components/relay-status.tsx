@@ -1,4 +1,4 @@
-import { useNostr } from '@/contexts/NostrContext';
+import { useNostr } from '@/hooks/useNostr';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wifi, WifiOff, Loader2, AlertCircle, Info } from 'lucide-react';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useNostr } from '@/contexts/NostrContext';
+import { useNostr } from '@/hooks/useNostr';
 import { useRelay } from '@/hooks/useRelay';
 import { Loader2 } from 'lucide-react';
 import { RelayCombobox } from './relay-combobox';

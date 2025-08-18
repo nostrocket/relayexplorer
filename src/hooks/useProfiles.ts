@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { NDKEvent, NDKSubscription } from '@nostr-dev-kit/ndk';
 import type { NDKFilter } from '@nostr-dev-kit/ndk';
-import { useNostr } from '@/contexts/NostrContext';
+import { useNostr } from '@/hooks/useNostr';
 
 export interface ProfileData {
   name?: string;

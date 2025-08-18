@@ -1,22 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import NDK, { NDKEvent, NDKSubscription, NDKRelay } from '@nostr-dev-kit/ndk';
 import type { NDKFilter } from '@nostr-dev-kit/ndk';
 import type { RelayMetadata } from '@/types/app';
-
-interface NostrContextType {
-  ndk: NDK | null;
-  isConnected: boolean;
-  connectionError: string | null;
-  relayUrl: string | null;
-  relayMetadata: RelayMetadata | null;
-  connect: (relayUrl: string) => Promise<void>;
-  disconnect: () => void;
-  subscribe: (filter: NDKFilter, callback: (event: NDKEvent) => void) => NDKSubscription | null;
-  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
-}
-
-const NostrContext = createContext<NostrContextType | undefined>(undefined);
+import { NostrContext } from '@/contexts/NostrContextType';
 
 export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [ndk, setNdk] = useState<NDK | null>(null);
@@ -165,7 +152,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
       }
     };
-  }, []);
+  }, [ndk]);
 
   return (
     <NostrContext.Provider value={{
@@ -184,10 +171,3 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
 };
 
-export const useNostr = () => {
-  const context = useContext(NostrContext);
-  if (!context) {
-    throw new Error('useNostr must be used within NostrProvider');
-  }
-  return context;
-};

@@ -23,8 +23,8 @@ import { Switch } from "@/components/ui/switch"
 import { RelayConnector } from "@/components/relay-connector"
 import { RelayStatus } from "@/components/relay-status"
 import { useEvents } from "@/hooks/useEvents"
-import { useProfiles } from "@/hooks/useProfiles"
-import { useNostr } from "@/contexts/NostrContext"
+import { useProfiles, type ProfileData } from "@/hooks/useProfiles"
+import { useNostr } from "@/hooks/useNostr"
 import { mockData } from "@/mock/data"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getRelativeTime } from "@/lib/utils"
@@ -43,7 +43,7 @@ const extractUniquePubkeys = (
   events: NDKEvent[], 
   getDisplayName: (pubkey: string) => string,
   getAvatarUrl: (pubkey: string) => string | null,
-  getProfile: (pubkey: string) => any
+  getProfile: (pubkey: string) => ProfileData | null
 ): AuthorInfo[] => {
   const pubkeySet = new Set<string>();
   

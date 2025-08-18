@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { NDKEvent, NDKSubscription } from '@nostr-dev-kit/ndk';
 import type { NDKFilter } from '@nostr-dev-kit/ndk';
-import { useNostr } from '@/contexts/NostrContext';
+import { useNostr } from '@/hooks/useNostr';
 import type { EventFilter } from '@/types/app';
 
 export const useEvents = (initialFilter?: EventFilter) => {
@@ -135,7 +135,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
       setError('Failed to create subscription');
       console.error('Failed to create subscription');
     }
-  }, [isConnected, ndk, subscribe, ndkFilter]);
+  }, [isConnected, ndk, subscribe, ndkFilter, subscription]);
 
   const updateFilter = useCallback((newFilter: Partial<EventFilter>) => {
     setFilter(prev => ({ ...prev, ...newFilter }));
@@ -187,7 +187,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
         setSubscription(null);
       }
     }
-  }, [isConnected, subscribeToEvents]);
+  }, [isConnected, subscribeToEvents, subscription]);
 
   // Cleanup on unmount
   useEffect(() => {

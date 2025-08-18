@@ -16,7 +16,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { useNostr } from "@/contexts/NostrContext"
+import { useNostr } from "@/hooks/useNostr"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 const SIDEBAR_WIDTH_KEY = 'sidebar-width'
@@ -39,7 +39,7 @@ export default function Page() {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString())
   }, [sidebarWidth])
 
-  const startResize = useCallback((_e: React.MouseEvent) => {
+  const startResize = useCallback(() => {
     isResizing.current = true
     
     const handleMouseMove = (e: MouseEvent) => {
