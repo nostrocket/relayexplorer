@@ -59,28 +59,27 @@ export const RelayConnector: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <RelayCombobox
-          value={inputUrl}
-          onValueChange={setInputUrl}
-          disabled={connectionStatus === 'connecting'}
-          placeholder="Enter relay URL or select from popular relays..."
-        />
-        <Button 
-          onClick={handleConnect}
-          disabled={connectionStatus === 'connecting'}
-          variant={isConnected ? "destructive" : "default"}
-          size="sm"
-        >
-          {connectionStatus === 'connecting' ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : isConnected ? (
-            'Disconnect'
-          ) : (
-            'Connect'
-          )}
-        </Button>
-      </div>
+      <RelayCombobox
+        value={inputUrl}
+        onValueChange={setInputUrl}
+        disabled={connectionStatus === 'connecting'}
+        placeholder="Enter relay URL or select from popular relays..."
+      />
+      
+      <Button 
+        onClick={handleConnect}
+        disabled={connectionStatus === 'connecting'}
+        variant={isConnected ? "destructive" : "default"}
+        className="w-full"
+      >
+        {connectionStatus === 'connecting' ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isConnected ? (
+          'Disconnect'
+        ) : (
+          'Connect'
+        )}
+      </Button>
       
       <div className="flex items-center justify-between">
         {getStatusBadge()}
