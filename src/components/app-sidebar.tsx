@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Command } from "lucide-react"
+import { GitBranchIcon } from "lucide-react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 import { NavUser } from "@/components/nav-user"
@@ -134,13 +134,9 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
-                <a href="#">
+                <a href="https://github.com/nostrocket/relayexplorer">
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <Command className="size-4" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">Nostr Relay</span>
-                    <span className="truncate text-xs">Explorer</span>
+                    <GitBranchIcon className="size-4" />
                   </div>
                 </a>
               </SidebarMenuButton>
@@ -165,8 +161,8 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                     isActive={activePubkey === null}
                     className="px-2.5 md:px-2 flex items-center gap-2 font-medium"
                   >
-                    <div className="h-6 w-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
-                      All
+                    <div className="h-6 w-6 bg-primary text-primary-foreground rounded flex items-center justify-center text-xs font-bold">
+                      ALL
                     </div>
                     <span className="truncate">All Profiles</span>
                   </SidebarMenuButton>
