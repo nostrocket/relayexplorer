@@ -215,6 +215,9 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
           <div className="flex w-full items-center justify-between">
             <div className="text-foreground text-base font-medium">
               {activePubkey ? getDisplayName(activePubkey) : 'All Profiles'}
+              <span className="ml-2 text-xs text-muted-foreground font-normal">
+                ({events.length} event{events.length !== 1 ? 's' : ''})
+              </span>
             </div>
             <Label className="flex items-center gap-2 text-sm">
               <span>Real-time</span>
