@@ -32,7 +32,6 @@ export class NIP66RelayDiscovery {
     if (this.isInitialized) return;
 
     try {
-      console.log('Initializing NIP-66 discovery with bootstrap relays:', BOOTSTRAP_RELAYS);
       
       // Create a dedicated NDK instance for relay discovery
       this.discoveryNdk = new NDK({
@@ -40,7 +39,6 @@ export class NIP66RelayDiscovery {
       });
 
       // Start connecting to bootstrap relays - continue regardless of failures
-      console.log(`Connecting to ${BOOTSTRAP_RELAYS.length} bootstrap relays...`);
       
       // Start connection process but don't fail if some relays don't connect
       this.discoveryNdk.connect(8000).catch(error => {
@@ -54,7 +52,6 @@ export class NIP66RelayDiscovery {
       const connectedRelays = Array.from(this.discoveryNdk.pool?.relays?.values() || [])
         .filter(relay => relay.status === NDKRelayStatus.CONNECTED);
       
-      console.log(`Connected to ${connectedRelays.length}/${BOOTSTRAP_RELAYS.length} bootstrap relays`);
       
       // Continue regardless of how many connected (even if zero)
       // The discovery methods will handle the case of no connections gracefully
@@ -62,10 +59,8 @@ export class NIP66RelayDiscovery {
       this.monitorManager = new RelayMonitorManager(this.discoveryNdk);
       this.isInitialized = true;
       
-      console.log('NIP-66 discovery initialized - will discover progressively');
     } catch (error) {
       console.warn('NIP-66 discovery initialization encountered issues:', error);
-      console.log('Continuing with hardcoded relays only');
       // Don't null out the instances - let them continue working with whatever they have
     }
   }
@@ -117,15 +112,12 @@ export class NIP66RelayDiscovery {
 
     try {
       // First, quickly discover available monitors
-      console.log('Discovering relay monitors...');
       state.monitors = await this.monitorManager.discoverMonitors();
-      console.log(`Found ${state.monitors.length} relay monitors`);
 
       // Get trusted monitors for filtering
       const trustedMonitors = this.monitorManager.getTrustedMonitors();
       const monitorPubkeys = trustedMonitors.length > 0 ? trustedMonitors.map(m => m.pubkey) : undefined;
 
-      console.log(`Starting progressive discovery${monitorPubkeys ? ` from ${monitorPubkeys.length} trusted monitors` : ' from any monitors'}`);
       
       // Create filter for relay discovery events
       const filter: NDKFilter = {
@@ -142,7 +134,6 @@ export class NIP66RelayDiscovery {
         console.warn('No relays connected yet; subscribing and waiting for connections...');
         // Do NOT return; proceed to subscribe so we receive events as soon as relays connect
       } else {
-        console.log(`Starting subscription with ${connectedRelays.length} connected relays`);
       }
 
       // Use subscription for progressive updates
@@ -197,7 +188,6 @@ export class NIP66RelayDiscovery {
       // Set a timeout to stop loading state even if we don't get EOSE
       setTimeout(() => {
         if (state.loading) {
-          console.log('Discovery timeout reached, showing current results');
           state.loading = false;
           if (onProgressUpdate) {
             onProgressUpdate({ ...state });
@@ -249,7 +239,6 @@ export class NIP66RelayDiscovery {
       onProgressUpdate({ ...state });
     }
 
-    console.log(`Updated relay list: ${state.relays.length} total (${discoveredRelays.length} discovered)`);
   }
 
   private async aggregateRelayReports(relayUrl: string, reports: NDKEvent[]): Promise<NIP66Relay | null> {

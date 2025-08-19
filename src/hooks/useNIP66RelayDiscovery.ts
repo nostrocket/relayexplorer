@@ -51,7 +51,6 @@ export const useNIP66RelayDiscovery = () => {
       // Refresh every 30 minutes
       refreshIntervalRef.current = setInterval(() => {
         if (discoveryRef.current && !state.loading) {
-          console.log('Performing periodic nostr.watch relay refresh');
           discoverRelays();
         }
       }, 30 * 60 * 1000);

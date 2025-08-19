@@ -53,7 +53,6 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return metadata;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Relay metadata fetch cancelled');
         return null;
       }
       console.warn('Failed to fetch relay metadata:', error);
@@ -111,7 +110,6 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       // Set up connection event listeners
       newNdk.pool.on('relay:connect', (relay: NDKRelay) => {
-        console.log('Relay connected:', relay.url);
         setIsConnected(true);
         setConnectionStatus('connected');
         setConnectionError(null);
@@ -123,7 +121,6 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       newNdk.pool.on('relay:disconnect', (relay: NDKRelay) => {
-        console.log('Relay disconnected:', relay.url);
         setIsConnected(false);
         setConnectionStatus('disconnected');
       });
@@ -148,7 +145,6 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setIsConnected(false);
       });
 
-      console.log('Attempting to connect to relay:', url);
     } catch (error) {
       console.error('Failed to initialize connection:', error);
       setConnectionError(error instanceof Error ? error.message : 'Connection failed');
@@ -183,7 +179,6 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     activeSubscriptions.current.clear();
 
     if (ndk) {
-      console.log('Disconnecting from relay...');
       ndk.pool.relays.forEach((relay: NDKRelay) => {
         try {
           relay.disconnect();
@@ -222,20 +217,16 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     try {
-      console.log('Creating subscription with filter:', filter);
       const subscription = ndk.subscribe(filter);
       
       subscription.on('event', (event: NDKEvent) => {
-        console.log('Received event:', event.kind, event.id);
         callback(event);
       });
       
       subscription.on('eose', () => {
-        console.log('End of stored events');
       });
 
       subscription.on('close', () => {
-        console.log('Subscription closed');
         activeSubscriptions.current.delete(subscription);
       });
 

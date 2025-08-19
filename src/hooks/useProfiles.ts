@@ -66,7 +66,6 @@ export const useProfiles = () => {
       setSubscription(null);
     }
 
-    console.log('Creating profile subscription for batch:', pubkeysBatch.length, 'pubkeys');
     setIsLoading(true);
 
     const filter: NDKFilter = {
@@ -112,7 +111,6 @@ export const useProfiles = () => {
       // Handle subscription end
       newSubscription.on('eose', () => {
         setIsLoading(false);
-        console.log('Profile batch subscription completed');
       });
 
       // Timeout fallback
@@ -178,7 +176,6 @@ export const useProfiles = () => {
     });
 
     if (newPubkeys.length > 0) {
-      console.log('Requesting profiles for new/expired pubkeys:', newPubkeys.length);
       setPendingPubkeys(prev => {
         const newSet = new Set(prev);
         newPubkeys.forEach(pubkey => {

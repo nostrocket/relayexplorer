@@ -29,7 +29,6 @@ export class RelayMonitorManager {
         since: Math.floor((Date.now() - this.MONITOR_CACHE_DURATION) / 1000)
       };
 
-      console.log(`Fetching monitor info from ${connectedRelays.length} connected relays`);
       const events = await this.ndk.fetchEvents(filter);
       const newMonitors: RelayMonitor[] = [];
 
@@ -41,7 +40,6 @@ export class RelayMonitorManager {
         }
       }
 
-      console.log(`Discovered ${newMonitors.length} new monitors, ${this.monitors.size} total cached`);
       return Array.from(this.monitors.values());
     } catch (error) {
       console.warn('Failed to discover relay monitors:', error);

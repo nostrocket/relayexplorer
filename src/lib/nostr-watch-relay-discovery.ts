@@ -28,7 +28,6 @@ export class NostrWatchRelayDiscovery {
       // Check if we can use cached data
       const now = Date.now();
       if (this.relayCache.size > 0 && (now - this.lastFetchTime) < this.CACHE_DURATION) {
-        console.log('Using cached relay data from nostr.watch');
         state.relays = this.mergeCachedRelays();
         state.loading = false;
         state.lastUpdated = new Date(this.lastFetchTime);
@@ -40,7 +39,6 @@ export class NostrWatchRelayDiscovery {
       }
 
       // Fetch fresh data from nostr.watch
-      console.log('Fetching relay list from nostr.watch API...');
       const response = await fetch('https://api.nostr.watch/v1/online', {
         method: 'GET',
         headers: {
@@ -54,7 +52,6 @@ export class NostrWatchRelayDiscovery {
       }
 
       const relayUrls: string[] = await response.json();
-      console.log(`Received ${relayUrls.length} relays from nostr.watch`);
 
       // Process and cache the relay data
       this.processRelayUrls(relayUrls);
@@ -69,7 +66,6 @@ export class NostrWatchRelayDiscovery {
         onProgressUpdate({ ...state });
       }
 
-      console.log(`Final relay list: ${state.relays.length} total relays`);
 
     } catch (error) {
       console.warn('Failed to fetch from nostr.watch, using hardcoded relays:', error);
@@ -94,7 +90,6 @@ export class NostrWatchRelayDiscovery {
       }
     }
 
-    console.log(`Processed ${this.relayCache.size} valid relays from nostr.watch`);
   }
 
   private createNIP66RelayFromUrl(url: string): NIP66Relay {
