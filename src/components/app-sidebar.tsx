@@ -252,9 +252,9 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
           onKindsChange={handleKindsChange}
         />
       </SidebarHeader>
-      <SidebarContent className="flex-1 overflow-y-auto">
-        <SidebarGroup className="px-0">
-          <SidebarGroupContent>
+      <SidebarContent className="flex-1 min-h-0">
+        <SidebarGroup className="px-0 flex flex-col min-h-0">
+          <SidebarGroupContent className="flex-1 min-h-0 overflow-y-auto">
             {!isConnected ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 Connect to a relay to view events
@@ -413,9 +413,9 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
                   onKindsChange={handleKindsChange}
                 />
               </div>
-              <SidebarContent className="flex-1 min-h-0 overflow-y-auto">
-                <SidebarGroup className="px-0">
-                  <SidebarGroupContent>
+              <SidebarContent className="flex-1 min-h-0">
+                <SidebarGroup className="px-0 flex flex-col min-h-0">
+                  <SidebarGroupContent className="flex-1 min-h-0 overflow-y-auto">
                     {!isConnected ? (
                       <div className="p-4 text-center text-sm text-muted-foreground">
                         Connect to a relay to view events
@@ -536,7 +536,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
       {/* First sidebar: Profiles - Full width on desktop */}
       <Sidebar
         collapsible="none"
-        className="w-80 border-r flex flex-col h-full"
+        className="w-80 border-r flex flex-col h-screen"
       >
         <SidebarHeader className="gap-3.5 border-b p-2 md:p-4 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -548,7 +548,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
             </a>
           </div>
         </SidebarHeader>
-        <SidebarContent className="flex-1 overflow-y-auto">
+        <SidebarContent className="flex-1 min-h-0 overflow-y-auto">
           {profilesContent}
         </SidebarContent>
         <SidebarFooter className="flex-shrink-0">
@@ -557,7 +557,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
       </Sidebar>
 
       {/* Second sidebar: Events - Full width on desktop */}
-      <Sidebar collapsible="none" className="w-96 border-r flex flex-col h-full">
+      <Sidebar collapsible="none" className="w-96 border-r flex flex-col h-screen">
         {eventsContent}
       </Sidebar>
     </Sidebar>
