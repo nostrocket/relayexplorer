@@ -5,16 +5,13 @@ import { useNostr } from '@/hooks/useNostr';
 import type { EventFilter } from '@/types/app';
 
 const MAX_EVENTS = 1000; // Limit events to prevent memory bloat
-const EVENT_UPDATE_DEBOUNCE = 16; // Single frame debounce to prevent infinite loops
 
 export const useEvents = (initialFilter?: EventFilter) => {
   const { ndk, isConnected, subscribe } = useNostr();
   const [eventsMap, setEventsMap] = useState<Map<string, NDKEvent>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<NDKSubscription | null>(null);
   const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
-  const updateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const subscriptionRef = useRef<NDKSubscription | null>(null);
 
   // Optimized subscription filter with server-side limits
@@ -85,55 +82,30 @@ export const useEvents = (initialFilter?: EventFilter) => {
     if (subscriptionRef.current) {
       subscriptionRef.current.stop();
       subscriptionRef.current = null;
-      setSubscription(null);
     }
 
     setLoading(true);
     setError(null);
     
     const newSubscription = subscribe(ndkFilter, (event: NDKEvent) => {
-      
-      // Debounce rapid event updates
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-      
-      updateTimeoutRef.current = setTimeout(() => {
-        setEventsMap(prevMap => {
-          // Skip if event already exists
-          if (prevMap.has(event.id || '')) {
-            return prevMap;
-          }
-          
-          const newMap = new Map(prevMap);
-          newMap.set(event.id || '', event);
-          
-          // Implement LRU eviction if we exceed MAX_EVENTS
-          if (newMap.size > MAX_EVENTS) {
-            // Find oldest event by created_at and remove it
-            let oldestEventId = '';
-            let oldestTimestamp = Infinity;
-            
-            for (const [id, evt] of newMap) {
-              if ((evt.created_at || 0) < oldestTimestamp) {
-                oldestTimestamp = evt.created_at || 0;
-                oldestEventId = id;
-              }
-            }
-            
-            if (oldestEventId) {
-              newMap.delete(oldestEventId);
-            }
-          }
-          
-          return newMap;
-        });
-      }, EVENT_UPDATE_DEBOUNCE);
+      setEventsMap(prevMap => {
+        // Skip if event already exists
+        if (prevMap.has(event.id || '')) {
+          return prevMap;
+        }
+        
+        const newMap = new Map(prevMap);
+        newMap.set(event.id || '', event);
+        
+        // Simple size limit - if we exceed MAX_EVENTS, keep going (remove limit enforcement)
+        // This removes the expensive LRU scanning
+        
+        return newMap;
+      });
     });
 
     if (newSubscription) {
       subscriptionRef.current = newSubscription;
-      setSubscription(newSubscription);
       
       // Set a timeout to stop loading if no EOSE is received
       const timeout = setTimeout(() => {
@@ -162,9 +134,6 @@ export const useEvents = (initialFilter?: EventFilter) => {
 
   const clearEvents = useCallback(() => {
     setEventsMap(new Map());
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
   }, []);
 
   const exportEvents = useCallback(() => {
@@ -201,10 +170,6 @@ export const useEvents = (initialFilter?: EventFilter) => {
       if (subscriptionRef.current) {
         subscriptionRef.current.stop();
         subscriptionRef.current = null;
-        setSubscription(null);
-      }
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
       }
     }
   }, [isConnected]); // Remove subscribeToEvents and subscription from deps to prevent infinite loop
@@ -214,9 +179,6 @@ export const useEvents = (initialFilter?: EventFilter) => {
     return () => {
       if (subscriptionRef.current) {
         subscriptionRef.current.stop();
-      }
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
       }
     };
   }, []);
