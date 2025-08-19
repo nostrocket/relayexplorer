@@ -31,6 +31,8 @@ import { mockData } from "@/mock/data"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getRelativeTime } from "@/lib/utils"
 import { EventKindFilter } from "@/components/event-kind-filter"
+import { VirtualizedEventList } from "@/components/virtualized-event-list"
+import { VirtualizedProfileList } from "@/components/virtualized-profile-list"
 
 interface AuthorInfo {
   pubkey: string;
@@ -75,7 +77,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onEventSelect?: (event: NDKEvent) => void
 }
 
-export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
+export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarProps) => {
   const [activePubkey, setActivePubkey] = React.useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
@@ -91,7 +93,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
   // Get profile management hooks
   const { requestProfiles, getDisplayName, getAvatarUrl, getProfile } = useProfiles()
   
-  // Extract unique pubkeys with profile data
+  // Extract unique pubkeys with profile data - memoized
   const uniquePubkeys = React.useMemo(() => 
     extractUniquePubkeys(allEvents, getDisplayName, getAvatarUrl, getProfile), 
     [allEvents, getDisplayName, getAvatarUrl, getProfile]
@@ -113,13 +115,29 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
     return allEvents.filter(event => event.pubkey === activePubkey);
   }, [allEvents, activePubkey])
 
-  // Update filter when search term or kinds change
+  // Update filter when search term or kinds change - memoized
+  const debouncedUpdateFilter = React.useCallback(
+    React.useMemo(
+      () => {
+        let timeoutId: NodeJS.Timeout;
+        return (search: string, kinds: number[]) => {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            updateFilter({ 
+              search: search || undefined,
+              kinds: kinds.length > 0 ? kinds : undefined
+            });
+          }, 300); // 300ms debounce
+        };
+      },
+      [updateFilter]
+    ),
+    [updateFilter]
+  );
+
   React.useEffect(() => {
-    updateFilter({ 
-      search: searchTerm,
-      kinds: selectedKinds.length > 0 ? selectedKinds : []
-    });
-  }, [searchTerm, selectedKinds, updateFilter]);
+    debouncedUpdateFilter(searchTerm, selectedKinds);
+  }, [searchTerm, selectedKinds, debouncedUpdateFilter]);
 
   // Handle profile selection with auto-switch to events tab on mobile
   const handleProfileSelect = React.useCallback((pubkey: string | null) => {
@@ -130,55 +148,85 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
     }
   }, [setOpen, isMobile]);
 
-  // Profiles content (for tab or first sidebar)
-  const profilesContent = (
+  // Handle event selection
+  const handleEventSelect = React.useCallback((event: NDKEvent) => {
+    setSelectedEvent(event);
+    onEventSelect?.(event);
+  }, [onEventSelect]);
+
+  // Handle search input changes
+  const handleSearchChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  // Handle kinds filter changes
+  const handleKindsChange = React.useCallback((kinds: number[]) => {
+    setSelectedKinds(kinds);
+  }, []);
+
+  // Profiles content (for tab or first sidebar) - memoized
+  const profilesContent = React.useMemo(() => (
     <SidebarGroup>
       <SidebarGroupContent className="px-1.5 md:px-0">
         <SidebarMenu>
-          {/* Show All Profiles Button */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={{
-                children: "Show events from all profiles",
-                hidden: false,
-              }}
-              onClick={() => handleProfileSelect(null)}
-              isActive={activePubkey === null}
-              className="px-2.5 md:px-2 flex items-center gap-2 font-medium min-h-[44px]"
-            >
-              <div className="h-6 w-6 bg-primary text-primary-foreground rounded flex items-center justify-center text-xs font-bold">
-                ALL
-              </div>
-              <span className="truncate">All Profiles</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          {uniquePubkeys.map((authorInfo) => (
-            <SidebarMenuItem key={authorInfo.pubkey}>
-              <SidebarMenuButton
-                tooltip={{
-                  children: authorInfo.displayName,
-                  hidden: false,
-                }}
-                onClick={() => handleProfileSelect(authorInfo.pubkey)}
-                isActive={activePubkey === authorInfo.pubkey}
-                className="px-2.5 md:px-2 flex items-center gap-2 min-h-[44px]"
-              >
-                <Avatar className="h-6 w-6">
-                  <AvatarImage 
-                    src={authorInfo.avatarUrl || `https://robohash.org/${authorInfo.pubkey}`} 
-                  />
-                  <AvatarFallback className="text-xs">
-                    {authorInfo.pubkey.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="truncate">{authorInfo.displayName}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {uniquePubkeys.length > 50 ? (
+            // Use virtualization for large lists
+            <VirtualizedProfileList
+              profiles={uniquePubkeys}
+              activePubkey={activePubkey}
+              onProfileSelect={handleProfileSelect}
+              height={400}
+              showAllProfilesButton={true}
+            />
+          ) : (
+            // Use regular rendering for small lists
+            <>
+              {/* Show All Profiles Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip={{
+                    children: "Show events from all profiles",
+                    hidden: false,
+                  }}
+                  onClick={() => handleProfileSelect(null)}
+                  isActive={activePubkey === null}
+                  className="px-2.5 md:px-2 flex items-center gap-2 font-medium min-h-[44px]"
+                >
+                  <div className="h-6 w-6 bg-primary text-primary-foreground rounded flex items-center justify-center text-xs font-bold">
+                    ALL
+                  </div>
+                  <span className="truncate">All Profiles</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {uniquePubkeys.map((authorInfo) => (
+                <SidebarMenuItem key={authorInfo.pubkey}>
+                  <SidebarMenuButton
+                    tooltip={{
+                      children: authorInfo.displayName,
+                      hidden: false,
+                    }}
+                    onClick={() => handleProfileSelect(authorInfo.pubkey)}
+                    isActive={activePubkey === authorInfo.pubkey}
+                    className="px-2.5 md:px-2 flex items-center gap-2 min-h-[44px]"
+                  >
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage 
+                        src={authorInfo.avatarUrl || `https://robohash.org/${authorInfo.pubkey}`} 
+                      />
+                      <AvatarFallback className="text-xs">
+                        {authorInfo.pubkey.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{authorInfo.displayName}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </>
+          )}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  );
+  ), [uniquePubkeys, activePubkey, handleProfileSelect]);
 
   // Events content (for tab or second sidebar)
   const eventsContent = (
@@ -205,11 +253,11 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
         <SidebarInput 
           placeholder="Search events..." 
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
         />
         <EventKindFilter
           selectedKinds={selectedKinds}
-          onKindsChange={setSelectedKinds}
+          onKindsChange={handleKindsChange}
         />
       </SidebarHeader>
       <SidebarContent>
@@ -270,42 +318,46 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                   </div>
                 </div>
                 
-                {/* Events List */}
-                {events
-                  .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-                  .map((event) => {
-                const isSelected = selectedEvent?.id === event.id
-                const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
-                const content = event.content || 'No content'
-                const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content
-                const authorShort = event.pubkey ? event.pubkey.substring(0, 8) + '...' : 'Unknown'
-                
-                return (
-                  <button
-                    key={event.id}
-                    onClick={() => {
-                      setSelectedEvent(event)
-                      onEventSelect?.(event)
-                    }}
-                    className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 md:p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors min-h-[60px] ${
-                      isSelected 
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                        : ''
-                    }`}
-                  >
-                    <div className="flex w-full items-center gap-2">
-                      <span className="font-mono text-xs">{authorShort}</span>
-                      <span className="ml-auto text-xs">
-                        {getRelativeTime(createdAt)}
-                      </span>
-                    </div>
-                    <span className="font-medium">Kind {event.kind}</span>
-                    <span className="line-clamp-2 w-full max-w-[260px] text-xs whitespace-break-spaces">
-                      {shortContent}
-                    </span>
-                  </button>
-                )
-                })}
+                {/* Events List - Virtualized for performance */}
+                {events.length > 50 ? (
+                  <VirtualizedEventList
+                    events={events}
+                    selectedEventId={selectedEvent?.id}
+                    onEventSelect={handleEventSelect}
+                    height={400}
+                  />
+                ) : (
+                  events.map((event) => {
+                    const isSelected = selectedEvent?.id === event.id
+                    const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
+                    const content = event.content || 'No content'
+                    const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content
+                    const authorShort = event.pubkey ? event.pubkey.substring(0, 8) + '...' : 'Unknown'
+                    
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={() => handleEventSelect(event)}
+                        className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 md:p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors min-h-[60px] ${
+                          isSelected 
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                            : ''
+                        }`}
+                      >
+                        <div className="flex w-full items-center gap-2">
+                          <span className="font-mono text-xs">{authorShort}</span>
+                          <span className="ml-auto text-xs">
+                            {getRelativeTime(createdAt)}
+                          </span>
+                        </div>
+                        <span className="font-medium">Kind {event.kind}</span>
+                        <span className="line-clamp-2 w-full max-w-[260px] text-xs whitespace-break-spaces">
+                          {shortContent}
+                        </span>
+                      </button>
+                    )
+                  })
+                )}
               </>
             )}
           </SidebarGroupContent>
@@ -362,11 +414,11 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                 <SidebarInput 
                   placeholder="Search events..." 
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                 />
                 <EventKindFilter
                   selectedKinds={selectedKinds}
-                  onKindsChange={setSelectedKinds}
+                  onKindsChange={handleKindsChange}
                 />
               </div>
               <SidebarContent className="flex-1 min-h-0 overflow-y-auto">
@@ -427,42 +479,46 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                           </div>
                         </div>
                         
-                        {/* Events List */}
-                        {events
-                          .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
-                          .map((event) => {
-                        const isSelected = selectedEvent?.id === event.id
-                        const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
-                        const content = event.content || 'No content'
-                        const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content
-                        const authorShort = event.pubkey ? event.pubkey.substring(0, 8) + '...' : 'Unknown'
-                        
-                        return (
-                          <button
-                            key={event.id}
-                            onClick={() => {
-                              setSelectedEvent(event)
-                              onEventSelect?.(event)
-                            }}
-                            className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors min-h-[60px] ${
-                              isSelected 
-                                ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                                : ''
-                            }`}
-                          >
-                            <div className="flex w-full items-center gap-2">
-                              <span className="font-mono text-xs">{authorShort}</span>
-                              <span className="ml-auto text-xs">
-                                {getRelativeTime(createdAt)}
-                              </span>
-                            </div>
-                            <span className="font-medium">Kind {event.kind}</span>
-                            <span className="line-clamp-2 w-full max-w-[260px] text-xs whitespace-break-spaces">
-                              {shortContent}
-                            </span>
-                          </button>
-                        )
-                        })}
+                        {/* Events List - Virtualized for performance */}
+                        {events.length > 50 ? (
+                          <VirtualizedEventList
+                            events={events}
+                            selectedEventId={selectedEvent?.id}
+                            onEventSelect={handleEventSelect}
+                            height={300}
+                          />
+                        ) : (
+                          events.map((event) => {
+                            const isSelected = selectedEvent?.id === event.id
+                            const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
+                            const content = event.content || 'No content'
+                            const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content
+                            const authorShort = event.pubkey ? event.pubkey.substring(0, 8) + '...' : 'Unknown'
+                            
+                            return (
+                              <button
+                                key={event.id}
+                                onClick={() => handleEventSelect(event)}
+                                className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors min-h-[60px] ${
+                                  isSelected 
+                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                                    : ''
+                                }`}
+                              >
+                                <div className="flex w-full items-center gap-2">
+                                  <span className="font-mono text-xs">{authorShort}</span>
+                                  <span className="ml-auto text-xs">
+                                    {getRelativeTime(createdAt)}
+                                  </span>
+                                </div>
+                                <span className="font-medium">Kind {event.kind}</span>
+                                <span className="line-clamp-2 w-full max-w-[260px] text-xs whitespace-break-spaces">
+                                  {shortContent}
+                                </span>
+                              </button>
+                            )
+                          })
+                        )}
                       </>
                     )}
                   </SidebarGroupContent>
@@ -520,4 +576,6 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
       </Sidebar>
     </Sidebar>
   )
-}
+});
+
+AppSidebar.displayName = 'AppSidebar';

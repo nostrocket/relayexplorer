@@ -16,19 +16,28 @@ export interface CachedProfile {
   lastUpdated: number;
 }
 
+const PROFILE_CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+const MAX_BATCH_SIZE = 50; // Maximum pubkeys per batch request
+const MIN_BATCH_DELAY = 2000; // Minimum time between batch requests
+
 export const useProfiles = () => {
   const { ndk, isConnected, subscribe } = useNostr();
   const [profiles, setProfiles] = useState<Map<string, CachedProfile>>(new Map());
   const [subscription, setSubscription] = useState<NDKSubscription | null>(null);
   const [requestedPubkeys, setRequestedPubkeys] = useState<Set<string>>(new Set());
   const [pendingPubkeys, setPendingPubkeys] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Use refs to track debounce state
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdateTimeRef = useRef<number>(0);
+  // Use refs to track batching state
+  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastBatchTimeRef = useRef<number>(0);
+  const activeBatchesRef = useRef<Set<string>>(new Set());
   
-  const DEBOUNCE_DELAY = 5000; // 5 seconds
-  
+  // Check if cached profile is still valid
+  const isProfileCacheValid = useCallback((cachedProfile: CachedProfile): boolean => {
+    return Date.now() - cachedProfile.lastUpdated < PROFILE_CACHE_TTL;
+  }, []);
+
   // Parse kind 0 event content
   const parseProfileData = useCallback((content: string): ProfileData | null => {
     try {
@@ -45,9 +54,9 @@ export const useProfiles = () => {
     }
   }, []);
 
-  // Update subscription with current pending pubkeys
-  const updateSubscription = useCallback(() => {
-    if (!isConnected || !ndk || pendingPubkeys.size === 0) {
+  // Create optimized batched subscription
+  const createBatchSubscription = useCallback((pubkeysBatch: string[]) => {
+    if (!isConnected || !ndk || pubkeysBatch.length === 0) {
       return;
     }
 
@@ -57,17 +66,16 @@ export const useProfiles = () => {
       setSubscription(null);
     }
 
-    const pubkeysArray = Array.from(pendingPubkeys);
-    console.log('Creating profile subscription for pubkeys:', pubkeysArray.length);
+    console.log('Creating profile subscription for batch:', pubkeysBatch.length, 'pubkeys');
+    setIsLoading(true);
 
     const filter: NDKFilter = {
       kinds: [0],
-      authors: pubkeysArray
+      authors: pubkeysBatch,
+      limit: Math.min(pubkeysBatch.length * 2, 200) // Reasonable limit
     };
 
     const newSubscription = subscribe(filter, (event: NDKEvent) => {
-      console.log('Received kind 0 event for pubkey:', event.pubkey);
-      
       if (event.kind === 0 && event.pubkey) {
         const profileData = parseProfileData(event.content || '');
         if (profileData) {
@@ -77,14 +85,20 @@ export const useProfiles = () => {
             lastUpdated: Date.now()
           };
 
-          setProfiles(prev => new Map(prev).set(event.pubkey, cachedProfile));
+          setProfiles(prev => {
+            const newMap = new Map(prev);
+            newMap.set(event.pubkey, cachedProfile);
+            return newMap;
+          });
           
-          // Remove this pubkey from pending requests
+          // Remove from pending and active batches
           setPendingPubkeys(prev => {
             const newSet = new Set(prev);
             newSet.delete(event.pubkey);
             return newSet;
           });
+          
+          activeBatchesRef.current.delete(event.pubkey);
         }
       }
     });
@@ -92,47 +106,96 @@ export const useProfiles = () => {
     if (newSubscription) {
       setSubscription(newSubscription);
       // Mark these pubkeys as requested
-      setRequestedPubkeys(prev => new Set([...prev, ...pubkeysArray]));
-      lastUpdateTimeRef.current = Date.now();
+      setRequestedPubkeys(prev => new Set([...prev, ...pubkeysBatch]));
+      lastBatchTimeRef.current = Date.now();
+      
+      // Handle subscription end
+      newSubscription.on('eose', () => {
+        setIsLoading(false);
+        console.log('Profile batch subscription completed');
+      });
+
+      // Timeout fallback
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 10000);
     }
-  }, [isConnected, ndk, subscribe, pendingPubkeys, subscription, parseProfileData]);
+  }, [isConnected, ndk, subscribe, subscription, parseProfileData]);
 
-  // Debounced subscription update
-  const scheduleSubscriptionUpdate = useCallback(() => {
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
+  // Smart batching for profile requests
+  const scheduleBatchUpdate = useCallback(() => {
+    if (batchTimeoutRef.current) {
+      clearTimeout(batchTimeoutRef.current);
     }
 
-    const timeSinceLastUpdate = Date.now() - lastUpdateTimeRef.current;
-    const delay = Math.max(0, DEBOUNCE_DELAY - timeSinceLastUpdate);
+    const timeSinceLastBatch = Date.now() - lastBatchTimeRef.current;
+    const delay = Math.max(0, MIN_BATCH_DELAY - timeSinceLastBatch);
 
-    debounceTimeoutRef.current = setTimeout(() => {
-      updateSubscription();
+    batchTimeoutRef.current = setTimeout(() => {
+      const pendingArray = Array.from(pendingPubkeys);
+      if (pendingArray.length === 0) return;
+
+      // Process in chunks if batch is too large
+      const batches = [];
+      for (let i = 0; i < pendingArray.length; i += MAX_BATCH_SIZE) {
+        batches.push(pendingArray.slice(i, i + MAX_BATCH_SIZE));
+      }
+
+      // Process first batch immediately, queue others
+      if (batches.length > 0) {
+        createBatchSubscription(batches[0]);
+        
+        // Queue remaining batches with staggered timing
+        batches.slice(1).forEach((batch, index) => {
+          setTimeout(() => {
+            createBatchSubscription(batch);
+          }, (index + 1) * MIN_BATCH_DELAY);
+        });
+      }
     }, delay);
-  }, [updateSubscription]);
+  }, [pendingPubkeys, createBatchSubscription]);
 
-  // Request profiles for new pubkeys
+  // Request profiles for new pubkeys with cache validation
   const requestProfiles = useCallback((pubkeys: string[]) => {
-    const newPubkeys = pubkeys.filter(pubkey => 
-      !profiles.has(pubkey) && !requestedPubkeys.has(pubkey)
-    );
+    const newPubkeys = pubkeys.filter(pubkey => {
+      // Skip if already pending or in active batch
+      if (pendingPubkeys.has(pubkey) || activeBatchesRef.current.has(pubkey)) {
+        return false;
+      }
+      
+      // Skip if recently requested
+      if (requestedPubkeys.has(pubkey)) {
+        return false;
+      }
+      
+      // Check if cached profile is still valid
+      const cached = profiles.get(pubkey);
+      if (cached && isProfileCacheValid(cached)) {
+        return false;
+      }
+      
+      return true;
+    });
 
     if (newPubkeys.length > 0) {
-      console.log('Requesting profiles for new pubkeys:', newPubkeys.length);
+      console.log('Requesting profiles for new/expired pubkeys:', newPubkeys.length);
       setPendingPubkeys(prev => {
         const newSet = new Set(prev);
-        newPubkeys.forEach(pubkey => newSet.add(pubkey));
+        newPubkeys.forEach(pubkey => {
+          newSet.add(pubkey);
+          activeBatchesRef.current.add(pubkey);
+        });
         return newSet;
       });
     }
-  }, [profiles, requestedPubkeys]);
+  }, [profiles, requestedPubkeys, pendingPubkeys, isProfileCacheValid]);
 
-  // Effect to trigger subscription updates when pending pubkeys change
+  // Effect to trigger batched subscription updates when pending pubkeys change
   useEffect(() => {
     if (pendingPubkeys.size > 0) {
-      scheduleSubscriptionUpdate();
+      scheduleBatchUpdate();
     }
-  }, [pendingPubkeys, scheduleSubscriptionUpdate]);
+  }, [pendingPubkeys, scheduleBatchUpdate]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -140,8 +203,8 @@ export const useProfiles = () => {
       if (subscription) {
         subscription.stop();
       }
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
       }
     };
   }, [subscription]);
@@ -170,6 +233,6 @@ export const useProfiles = () => {
     getProfile,
     getDisplayName,
     getAvatarUrl,
-    isLoading: pendingPubkeys.size > 0
+    isLoading: isLoading || pendingPubkeys.size > 0
   };
 };
