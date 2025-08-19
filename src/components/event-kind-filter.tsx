@@ -78,9 +78,9 @@ export function EventKindFilter({ selectedKinds, onKindsChange, className }: Eve
             variant="ghost"
             size="sm"
             onClick={clearAll}
-            className="h-6 w-6 p-0 ml-auto"
+            className="h-8 w-8 p-0 ml-auto"
           >
-            <XIcon className="h-3 w-3" />
+            <XIcon className="h-4 w-4" />
           </Button>
         )}
       </div>
@@ -106,7 +106,7 @@ export function EventKindFilter({ selectedKinds, onKindsChange, className }: Eve
             variant="outline"
             size="sm"
             onClick={() => applyPreset(preset)}
-            className="h-6 px-2 text-xs"
+            className="h-8 px-3 text-xs"
           >
             {preset.label}
           </Button>

@@ -74,25 +74,25 @@ export default function Page() {
       <div ref={sidebarRef} className="relative">
         <AppSidebar onEventSelect={setSelectedEvent} />
         <div
-          className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-border transition-colors z-50"
+          className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-border transition-colors z-50 hidden md:block"
           onMouseDown={startResize}
         />
       </div>
       <SidebarInset>
-        <header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-4">
+        <header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-2 md:p-4">
           <SidebarTrigger className="-ml-1" />
           <Separator
             orientation="vertical"
             className="mr-2 data-[orientation=vertical]:h-4"
           />
-          <Breadcrumb>
+          <Breadcrumb className="flex-1 min-w-0">
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="#">Nostr Relays</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>
+                <BreadcrumbPage className="truncate">
                   {relayMetadata?.name || (relayUrl ? 'Relay Explorer' : 'Not Connected')}
                 </BreadcrumbPage>
               </BreadcrumbItem>

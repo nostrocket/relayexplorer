@@ -66,87 +66,92 @@ export function EventViewer({ event }: EventViewerProps) {
   return (
     <div className="flex flex-1 flex-col">
       {/* Event Header */}
-      <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-4 md:p-6 border-b">
+        <div className="flex items-center gap-3 md:gap-4">
           <Avatar className="h-10 w-10">
             <AvatarImage src={`https://robohash.org/${event.pubkey}`} />
             <AvatarFallback className="font-mono text-xs">
               {authorInitials}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-xl font-semibold">Event Kind {event.kind}</h2>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2 md:mb-1">
+              <h2 className="text-lg md:text-xl font-semibold">Event Kind {event.kind}</h2>
               <Badge variant="outline">{event.kind}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground font-mono">
+            <p className="text-sm text-muted-foreground font-mono truncate">
               {authorShort}
             </p>
             {event.id && (
-              <p className="text-xs text-muted-foreground font-mono">
+              <p className="text-xs text-muted-foreground font-mono truncate">
                 ID: {event.id.substring(0, 16)}...
               </p>
             )}
           </div>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground text-right">
           <div>{getRelativeTime(createdAt)}</div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-2 p-4 border-b bg-muted/30">
+      <div className="flex flex-wrap items-center gap-2 p-2 md:p-4 border-b bg-muted/30">
         <Button 
           variant="outline" 
           size="sm"
+          className="h-9"
           onClick={() => event.id && copyToClipboard(event.id)}
         >
-          <Copy className="h-4 w-4 mr-2" />
-          Copy ID
+          <Copy className="h-4 w-4 mr-1 md:mr-2" />
+          <span className="hidden sm:inline">Copy </span>ID
         </Button>
         <Button 
           variant="outline" 
           size="sm"
+          className="h-9"
           onClick={() => event.pubkey && copyToClipboard(event.pubkey)}
         >
-          <Copy className="h-4 w-4 mr-2" />
-          Copy Pubkey
+          <Copy className="h-4 w-4 mr-1 md:mr-2" />
+          <span className="hidden sm:inline">Copy </span>Pubkey
         </Button>
         <Button 
           variant="outline" 
           size="sm"
+          className="h-9"
           onClick={downloadAsJson}
         >
-          <Download className="h-4 w-4 mr-2" />
-          Download JSON
+          <Download className="h-4 w-4 mr-1 md:mr-2" />
+          <span className="hidden sm:inline">Download </span>JSON
         </Button>
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 hidden md:block" />
         <Button 
           variant="outline" 
           size="sm"
+          className="h-9"
           onClick={() => setShowRawJson(!showRawJson)}
         >
-          {showRawJson ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+          {showRawJson ? <EyeOff className="h-4 w-4 mr-1 md:mr-2" /> : <Eye className="h-4 w-4 mr-1 md:mr-2" />}
           {showRawJson ? 'Hide' : 'Show'} Raw
         </Button>
         {event.pubkey && (
           <Button 
             variant="outline" 
             size="sm"
+            className="h-9"
             onClick={() => window.open(`https://njump.me/${event.pubkey}`, '_blank')}
           >
-            <ExternalLink className="h-4 w-4 mr-2" />
+            <ExternalLink className="h-4 w-4 mr-1 md:mr-2" />
             Profile
           </Button>
         )}
       </div>
 
       {/* Event Content */}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-4 md:p-6 overflow-auto">
         {showRawJson ? (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Raw Event Data</h3>
-            <pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-auto">
+            <pre className="bg-muted p-2 md:p-4 rounded-lg text-xs font-mono overflow-auto whitespace-pre-wrap break-words">
               {JSON.stringify({
                 id: event.id,
                 pubkey: event.pubkey,
@@ -165,7 +170,7 @@ export function EventViewer({ event }: EventViewerProps) {
               <div>
                 <h3 className="text-lg font-semibold mb-2">Content</h3>
                 <div className="prose prose-sm max-w-none">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed bg-muted/30 p-4 rounded-lg">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed bg-muted/30 p-3 md:p-4 rounded-lg break-words">
                     {event.content}
                   </div>
                 </div>
@@ -194,7 +199,7 @@ export function EventViewer({ event }: EventViewerProps) {
             {/* Metadata */}
             <div>
               <h3 className="text-lg font-semibold mb-2">Metadata</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="font-medium">Event ID:</span>
                   <div className="font-mono text-xs text-muted-foreground break-all">
@@ -220,7 +225,7 @@ export function EventViewer({ event }: EventViewerProps) {
                   </div>
                 </div>
                 {event.sig && (
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <span className="font-medium">Signature:</span>
                     <div className="font-mono text-xs text-muted-foreground break-all">
                       {event.sig}

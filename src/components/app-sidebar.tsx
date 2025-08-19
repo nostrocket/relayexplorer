@@ -159,7 +159,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                       setOpen(true)
                     }}
                     isActive={activePubkey === null}
-                    className="px-2.5 md:px-2 flex items-center gap-2 font-medium"
+                    className="px-2.5 md:px-2 flex items-center gap-2 font-medium min-h-[44px]"
                   >
                     <div className="h-6 w-6 bg-primary text-primary-foreground rounded flex items-center justify-center text-xs font-bold">
                       ALL
@@ -179,7 +179,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                         setOpen(true)
                       }}
                       isActive={activePubkey === authorInfo.pubkey}
-                      className="px-2.5 md:px-2 flex items-center gap-2"
+                      className="px-2.5 md:px-2 flex items-center gap-2 min-h-[44px]"
                     >
                       <Avatar className="h-6 w-6">
                         <AvatarImage 
@@ -204,19 +204,19 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
 
       {/* This is the second sidebar */}
       {/* We disable collapsible and let it fill remaining space */}
-      <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-        <SidebarHeader className="gap-3.5 border-b p-4">
+      <Sidebar collapsible="none" className="flex-1 flex">
+        <SidebarHeader className="gap-3.5 border-b p-2 md:p-4">
           <RelayConnector />
           <RelayStatus />
-          <div className="flex w-full items-center justify-between">
-            <div className="text-foreground text-base font-medium">
+          <div className="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="text-foreground text-sm md:text-base font-medium">
               {activePubkey ? getDisplayName(activePubkey) : 'All Profiles'}
               <span className="ml-2 text-xs text-muted-foreground font-normal">
                 ({events.length} event{events.length !== 1 ? 's' : ''})
               </span>
             </div>
             <Label className="flex items-center gap-2 text-sm">
-              <span>Real-time</span>
+              <span className="hidden md:inline">Real-time</span>
               <Switch className="shadow-none" defaultChecked />
             </Label>
           </div>
@@ -244,15 +244,15 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
               ) : (
                 <>
                   {/* Profile Preview */}
-                  <div className="border-b p-4 bg-sidebar-accent/50">
-                    <div className="flex items-start gap-3">
+                  <div className="border-b p-2 md:p-4 bg-sidebar-accent/50">
+                    <div className="flex items-start gap-2 md:gap-3">
                       {activePubkey ? (
                         <>
-                          <Avatar className="h-12 w-12">
+                          <Avatar className="h-10 w-10 md:h-12 md:w-12">
                             <AvatarImage 
                               src={getAvatarUrl(activePubkey) || `https://robohash.org/${activePubkey}`} 
                             />
-                            <AvatarFallback className="text-sm">
+                            <AvatarFallback className="text-xs md:text-sm">
                               {activePubkey.substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -272,7 +272,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                         </>
                       ) : (
                         <>
-                          <div className="h-12 w-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                          <div className="h-10 w-10 md:h-12 md:w-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs md:text-sm font-bold">
                             All
                           </div>
                           <div className="flex-1 min-w-0">
@@ -305,7 +305,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                         setSelectedEvent(event)
                         onEventSelect?.(event)
                       }}
-                      className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors ${
+                      className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 md:p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 w-full text-left transition-colors min-h-[60px] ${
                         isSelected 
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                           : ''
@@ -318,7 +318,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                         </span>
                       </div>
                       <span className="font-medium">Kind {event.kind}</span>
-                      <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
+                      <span className="line-clamp-2 w-full max-w-[260px] text-xs whitespace-break-spaces">
                         {shortContent}
                       </span>
                     </button>
