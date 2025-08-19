@@ -4,22 +4,19 @@ import type { NDKFilter } from '@nostr-dev-kit/ndk';
 import { useNostr } from '@/hooks/useNostr';
 import type { EventFilter } from '@/types/app';
 
-const MAX_EVENTS = 1000; // Limit events to prevent memory bloat
 
 export const useEvents = (initialFilter?: EventFilter) => {
   const { ndk, isConnected, subscribe } = useNostr();
   const [eventsMap, setEventsMap] = useState<Map<string, NDKEvent>>(new Map());
+  const [profileEventsMap, setProfileEventsMap] = useState<Map<string, NDKEvent>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
   const subscriptionRef = useRef<NDKSubscription | null>(null);
 
-  // Optimized subscription filter with server-side limits
+  // Optimized subscription filter - no limits for maximum data collection
   const ndkFilter = useMemo((): NDKFilter => {
     const ndkFilter: NDKFilter = {};
-    
-    // Add server-side limit to prevent overwhelming the client
-    ndkFilter.limit = MAX_EVENTS;
     
     return ndkFilter;
   }, []); // No dependencies - filter never changes
@@ -88,17 +85,33 @@ export const useEvents = (initialFilter?: EventFilter) => {
     setError(null);
     
     const newSubscription = subscribe(ndkFilter, (event: NDKEvent) => {
+      // Handle profile events (kind 0) separately
+      if (event.kind === 0 && event.pubkey) {
+        setProfileEventsMap(prevMap => {
+          // For profile events, use pubkey as key to keep only the latest profile per user
+          const existing = prevMap.get(event.pubkey);
+          
+          // Only update if this event is newer than the existing one
+          if (!existing || (event.created_at || 0) > (existing.created_at || 0)) {
+            const newMap = new Map(prevMap);
+            newMap.set(event.pubkey, event);
+            return newMap;
+          }
+          
+          return prevMap;
+        });
+      }
+      
+      // Handle all events (including profiles for general event listing)
       setEventsMap(prevMap => {
         // Skip if event already exists
         if (prevMap.has(event.id || '')) {
           return prevMap;
         }
         
+        // Optimize: Create new Map only when adding new event
         const newMap = new Map(prevMap);
         newMap.set(event.id || '', event);
-        
-        // Simple size limit - if we exceed MAX_EVENTS, keep going (remove limit enforcement)
-        // This removes the expensive LRU scanning
         
         return newMap;
       });
@@ -134,7 +147,33 @@ export const useEvents = (initialFilter?: EventFilter) => {
 
   const clearEvents = useCallback(() => {
     setEventsMap(new Map());
+    setProfileEventsMap(new Map());
   }, []);
+
+  // Parse profile data from kind 0 event content
+  const parseProfileData = useCallback((content: string) => {
+    try {
+      const parsed = JSON.parse(content);
+      return {
+        name: parsed.name,
+        about: parsed.about,
+        picture: parsed.picture,
+        nip05: parsed.nip05
+      };
+    } catch (error) {
+      console.warn('Failed to parse profile data:', error);
+      return null;
+    }
+  }, []);
+
+  // Get profile data for a specific pubkey
+  const getProfileData = useCallback((pubkey: string) => {
+    const profileEvent = profileEventsMap.get(pubkey);
+    if (!profileEvent || !profileEvent.content) {
+      return null;
+    }
+    return parseProfileData(profileEvent.content);
+  }, [profileEventsMap, parseProfileData]);
 
   const exportEvents = useCallback(() => {
     const exportData = filteredEvents.map(event => ({
@@ -166,6 +205,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
     } else {
       // Clear events when disconnected
       setEventsMap(new Map());
+      setProfileEventsMap(new Map());
       setLoading(false);
       if (subscriptionRef.current) {
         subscriptionRef.current.stop();
@@ -185,6 +225,8 @@ export const useEvents = (initialFilter?: EventFilter) => {
 
   return {
     events: filteredEvents,
+    profileEvents: profileEventsMap,
+    getProfileData,
     loading,
     error,
     filter,

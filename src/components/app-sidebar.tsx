@@ -87,25 +87,17 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
   const { isConnected } = useNostr()
   const isMobile = useIsMobile()
   
-  // Get all events first
-  const { events: allEvents, updateFilter } = useEvents({})
+  // Get all events and profile events
+  const { events: allEvents, profileEvents, updateFilter } = useEvents({})
   
   // Get profile management hooks
-  const { requestProfiles, getDisplayName, getAvatarUrl, getProfile } = useProfiles()
+  const { getDisplayName, getAvatarUrl, getProfile } = useProfiles(profileEvents)
   
   // Extract unique pubkeys with profile data - memoized
   const uniquePubkeys = React.useMemo(() => 
     extractUniquePubkeys(allEvents, getDisplayName, getAvatarUrl, getProfile), 
     [allEvents, getDisplayName, getAvatarUrl, getProfile]
   )
-  
-  // Request profiles for discovered pubkeys
-  React.useEffect(() => {
-    const pubkeys = uniquePubkeys.map(author => author.pubkey);
-    if (pubkeys.length > 0) {
-      requestProfiles(pubkeys);
-    }
-  }, [uniquePubkeys, requestProfiles]);
   
   // Note: No auto-selection of pubkey - "All Profiles" is default
   
