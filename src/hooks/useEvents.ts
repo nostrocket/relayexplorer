@@ -5,7 +5,7 @@ import { useNostr } from '@/hooks/useNostr';
 import type { EventFilter } from '@/types/app';
 
 const MAX_EVENTS = 1000; // Limit events to prevent memory bloat
-const EVENT_UPDATE_DEBOUNCE = 100; // Debounce rapid updates
+const EVENT_UPDATE_DEBOUNCE = 16; // Single frame debounce to prevent infinite loops
 
 export const useEvents = (initialFilter?: EventFilter) => {
   const { ndk, isConnected, subscribe } = useNostr();
@@ -15,6 +15,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
   const [subscription, setSubscription] = useState<NDKSubscription | null>(null);
   const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
   const updateTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const subscriptionRef = useRef<NDKSubscription | null>(null);
 
   // Optimized subscription filter with server-side limits
   const ndkFilter = useMemo((): NDKFilter => {
@@ -74,27 +75,23 @@ export const useEvents = (initialFilter?: EventFilter) => {
   }, [events, filter.authors, filter.kinds, filter.dateRange, filter.search]);
 
   const subscribeToEvents = useCallback(() => {
-    console.log('subscribeToEvents called', { isConnected, ndk: !!ndk, filter: ndkFilter });
     
     if (!isConnected || !ndk) {
-      console.log('Not subscribing: not connected or no NDK');
       setLoading(false);
       return;
     }
 
     // Close existing subscription
-    if (subscription) {
-      console.log('Stopping existing subscription');
-      subscription.stop();
+    if (subscriptionRef.current) {
+      subscriptionRef.current.stop();
+      subscriptionRef.current = null;
       setSubscription(null);
     }
 
     setLoading(true);
     setError(null);
     
-    console.log('Creating new subscription with filter:', ndkFilter);
     const newSubscription = subscribe(ndkFilter, (event: NDKEvent) => {
-      console.log('Event received in useEvents:', event.kind, event.id);
       
       // Debounce rapid event updates
       if (updateTimeoutRef.current) {
@@ -105,7 +102,6 @@ export const useEvents = (initialFilter?: EventFilter) => {
         setEventsMap(prevMap => {
           // Skip if event already exists
           if (prevMap.has(event.id || '')) {
-            console.log('Duplicate event, skipping:', event.id);
             return prevMap;
           }
           
@@ -127,44 +123,38 @@ export const useEvents = (initialFilter?: EventFilter) => {
             
             if (oldestEventId) {
               newMap.delete(oldestEventId);
-              console.log('Evicted oldest event:', oldestEventId, 'Total events:', newMap.size);
             }
           }
           
-          console.log('Added event, total events:', newMap.size);
           return newMap;
         });
       }, EVENT_UPDATE_DEBOUNCE);
     });
 
     if (newSubscription) {
+      subscriptionRef.current = newSubscription;
       setSubscription(newSubscription);
-      console.log('Subscription created successfully');
       
       // Set a timeout to stop loading if no EOSE is received
       const timeout = setTimeout(() => {
         setLoading(false);
-        console.log('Subscription loading timeout reached');
       }, 10000);
 
       // Handle subscription end
       newSubscription.on('eose', () => {
         clearTimeout(timeout);
         setLoading(false);
-        console.log('End of stored events received');
       });
 
       newSubscription.on('close', () => {
         clearTimeout(timeout);
         setLoading(false);
-        console.log('Subscription closed');
       });
     } else {
       setLoading(false);
       setError('Failed to create subscription');
-      console.error('Failed to create subscription');
     }
-  }, [isConnected, ndk, subscribe, ndkFilter, subscription]);
+  }, [isConnected, ndk, subscribe, ndkFilter]);
 
   const updateFilter = useCallback((newFilter: Partial<EventFilter>) => {
     setFilter(prev => ({ ...prev, ...newFilter }));
@@ -201,40 +191,35 @@ export const useEvents = (initialFilter?: EventFilter) => {
 
   // Subscribe when filter changes or connection is established
   useEffect(() => {
-    console.log('useEvents effect triggered', { isConnected });
     if (isConnected) {
-      // Add a small delay to ensure connection is fully established
-      const timer = setTimeout(() => {
-        console.log('Starting subscription after connection delay');
-        subscribeToEvents();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
+      // Start subscription immediately when connected
+      subscribeToEvents();
     } else {
       // Clear events when disconnected
       setEventsMap(new Map());
       setLoading(false);
-      if (subscription) {
-        subscription.stop();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.stop();
+        subscriptionRef.current = null;
         setSubscription(null);
       }
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
     }
-  }, [isConnected, subscribeToEvents, subscription]);
+  }, [isConnected]); // Remove subscribeToEvents and subscription from deps to prevent infinite loop
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (subscription) {
-        subscription.stop();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.stop();
       }
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
     };
-  }, [subscription]);
+  }, []);
 
   return {
     events: filteredEvents,
