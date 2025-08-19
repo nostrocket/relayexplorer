@@ -80,7 +80,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
   const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
   const [selectedKinds, setSelectedKinds] = React.useState<number[]>([])
-  const [activeTab, setActiveTab] = React.useState('events')
+  const [activeTab, setActiveTab] = React.useState('profiles')
   const { setOpen } = useSidebar()
   const { isConnected } = useNostr()
   const isMobile = useIsMobile()
@@ -327,8 +327,8 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
             <RelayConnector />
             <RelayStatus />
           </SidebarHeader>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <div className="px-2 pt-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <div className="px-2 pt-2 flex-shrink-0">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="profiles" className="text-xs">
                   Profiles ({uniquePubkeys.length + 1})
@@ -339,14 +339,14 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
               </TabsList>
             </div>
             
-            <TabsContent value="profiles" className="flex-1 mt-0">
-              <SidebarContent className="scrollbar-hide">
+            <TabsContent value="profiles" className="flex-1 mt-0 min-h-0 overflow-hidden">
+              <SidebarContent className="scrollbar-hide overflow-y-auto h-full">
                 {profilesContent}
               </SidebarContent>
             </TabsContent>
             
-            <TabsContent value="events" className="flex-1 mt-0 flex flex-col">
-              <div className="px-2 space-y-2">
+            <TabsContent value="events" className="flex-1 mt-0 min-h-0 overflow-hidden flex flex-col">
+              <div className="px-2 space-y-2 flex-shrink-0">
                 <div className="flex w-full flex-col gap-2">
                   <div className="text-foreground text-sm font-medium">
                     {activePubkey ? getDisplayName(activePubkey) : 'All Profiles'}
@@ -369,7 +369,7 @@ export function AppSidebar({ onEventSelect, ...props }: AppSidebarProps) {
                   onKindsChange={setSelectedKinds}
                 />
               </div>
-              <SidebarContent className="flex-1">
+              <SidebarContent className="flex-1 min-h-0 overflow-y-auto">
                 <SidebarGroup className="px-0">
                   <SidebarGroupContent>
                     {!isConnected ? (
