@@ -6,7 +6,7 @@ import type { EventFilter } from '@/types/app';
 
 
 export const useEvents = (initialFilter?: EventFilter) => {
-  const { ndk, isConnected, subscribe } = useNostr();
+  const { ndk, isConnected, subscribe, subscriptionKinds } = useNostr();
   const [eventsMap, setEventsMap] = useState<Map<string, NDKEvent>>(new Map());
   const [profileEventsMap, setProfileEventsMap] = useState<Map<string, NDKEvent>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -14,12 +14,17 @@ export const useEvents = (initialFilter?: EventFilter) => {
   const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
   const subscriptionRef = useRef<NDKSubscription | null>(null);
 
-  // Optimized subscription filter - no limits for maximum data collection
+  // Subscription filter using the configured event kinds
   const ndkFilter = useMemo((): NDKFilter => {
     const ndkFilter: NDKFilter = {};
     
+    // Use subscription kinds from context
+    if (subscriptionKinds && subscriptionKinds.length > 0) {
+      ndkFilter.kinds = subscriptionKinds;
+    }
+    
     return ndkFilter;
-  }, []); // No dependencies - filter never changes
+  }, [subscriptionKinds]);
 
   // Convert Map to sorted array - memoized for performance
   const events = useMemo(() => {
@@ -197,10 +202,10 @@ export const useEvents = (initialFilter?: EventFilter) => {
     URL.revokeObjectURL(url);
   }, [filteredEvents]);
 
-  // Subscribe when filter changes or connection is established
+  // Subscribe when connection is established or subscription kinds change
   useEffect(() => {
     if (isConnected) {
-      // Start subscription immediately when connected
+      // Start subscription immediately when connected or when kinds change
       subscribeToEvents();
     } else {
       // Clear events when disconnected
@@ -212,7 +217,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
         subscriptionRef.current = null;
       }
     }
-  }, [isConnected]); // Remove subscribeToEvents and subscription from deps to prevent infinite loop
+  }, [isConnected, subscribeToEvents]); // Include subscribeToEvents since it depends on ndkFilter which now depends on subscriptionKinds
 
   // Cleanup on unmount
   useEffect(() => {

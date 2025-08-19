@@ -10,7 +10,8 @@ interface NostrContextType {
   connectionError: string | null;
   relayUrl: string | null;
   relayMetadata: RelayMetadata | null;
-  connect: (relayUrl: string) => Promise<void>;
+  subscriptionKinds: number[] | null;
+  connect: (relayUrl: string, kinds?: number[]) => Promise<void>;
   disconnect: () => void;
   subscribe: (filter: NDKFilter, callback: (event: NDKEvent) => void) => NDKSubscription | null;
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';

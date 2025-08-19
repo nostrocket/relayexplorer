@@ -15,6 +15,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [relayUrl, setRelayUrl] = useState<string | null>(null);
   const [relayMetadata, setRelayMetadata] = useState<RelayMetadata | null>(null);
+  const [subscriptionKinds, setSubscriptionKinds] = useState<number[] | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   
   // Resource management
@@ -60,7 +61,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
-  const connect = useCallback(async (url: string) => {
+  const connect = useCallback(async (url: string, kinds?: number[]) => {
     try {
       // Clear existing timeouts
       if (connectionTimeoutRef.current) {
@@ -73,6 +74,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setConnectionStatus('connecting');
       setConnectionError(null);
       setRelayUrl(url);
+      setSubscriptionKinds(kinds || [0, 1]); // Default to profile and text note kinds
 
       // Cleanup existing connections and subscriptions
       if (ndk) {
@@ -194,6 +196,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setConnectionError(null);
     setRelayUrl(null);
     setRelayMetadata(null);
+    setSubscriptionKinds(null);
   }, [ndk]);
 
   const subscribe = useCallback((filter: NDKFilter, callback: (event: NDKEvent) => void): NDKSubscription | null => {
@@ -288,6 +291,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       connectionError,
       relayUrl,
       relayMetadata,
+      subscriptionKinds,
       connect,
       disconnect,
       subscribe,
