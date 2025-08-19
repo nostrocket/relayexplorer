@@ -175,6 +175,30 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
     setSelectedKinds(kinds);     // Updates filter chip selection and triggers filtering
   }, []);
 
+  // Add ref and state for profile list container height
+  const profileContainerRef = React.useRef<HTMLDivElement>(null);
+  const [profileListHeight, setProfileListHeight] = React.useState(600);
+  
+  // Calculate available height for profile list
+  React.useEffect(() => {
+    const updateHeight = () => {
+      if (profileContainerRef.current) {
+        const rect = profileContainerRef.current.getBoundingClientRect();
+        // Account for padding and ensure minimum height
+        const availableHeight = Math.max(400, rect.height - 20);
+        setProfileListHeight(availableHeight);
+      }
+    };
+    
+    updateHeight();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    if (profileContainerRef.current) {
+      resizeObserver.observe(profileContainerRef.current);
+    }
+    
+    return () => resizeObserver.disconnect();
+  }, []);
+
   // LEFT SIDEBAR CONTENT: Profile list with "All Profiles" option and individual authors
   // UI Result: Scrollable list of clickable profile items with avatars and names in left sidebar
   const profilesContent = React.useMemo(() => (
@@ -188,7 +212,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
               profiles={uniquePubkeys}              // Data source for profile items
               activePubkey={activePubkey}           // Highlights selected profile
               onProfileSelect={handleProfileSelect} // Handles click interactions
-              height={500}                          // Fixed height for virtualization
+              height={profileListHeight}            // Dynamic height based on available space
               showAllProfilesButton={true}          // Includes "All Profiles" option at top
             />
           ) : (
@@ -247,7 +271,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  ), [uniquePubkeys, activePubkey, handleProfileSelect]);
+  ), [uniquePubkeys, activePubkey, handleProfileSelect, profileListHeight]);
 
   // RIGHT SIDEBAR CONTENT: Event list with header controls and search functionality
   // UI Result: Full-height right sidebar with header controls and scrollable event list
@@ -328,7 +352,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
                       <>
                         <Avatar className="h-10 w-10 md:h-12 md:w-12">            {/* Larger profile picture */}
                           <AvatarImage 
-                            src={getAvatarUrl(activePubkey) || `https://robohash.org/${activePubkey}`}  {/* Profile pic or generated */}
+                            src={getAvatarUrl(activePubkey) || `https://robohash.org/${activePubkey}`}
                           />
                           <AvatarFallback className="text-xs md:text-sm">         {/* Fallback initials */}
                             {activePubkey.substring(0, 2).toUpperCase()}
@@ -586,7 +610,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
                             events={events}
                             selectedEventId={selectedEvent?.id}
                             onEventSelect={handleEventSelect}
-                            height={300}                                         {/* Smaller than desktop (400) */}
+                            height={300}
                           />
                         ) : (
                           // Regular event list with mobile-optimized spacing
@@ -667,7 +691,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
         
         {/* DESKTOP PROFILE LIST CONTENT: Scrollable profile list */}
         {/* UI Result: Fills remaining space between header and footer with scrollable profile list */}
-        <div className="flex-1 min-h-0">                              {/* Flexible height, allows scrolling */}
+        <div className="flex-1 min-h-0" ref={profileContainerRef}>     {/* Add ref here for height calculation */}
           <div className="h-full overflow-y-auto">                    {/* Full height with scroll */}
             {profilesContent}                                         {/* Reused profile list from above */}
           </div>
