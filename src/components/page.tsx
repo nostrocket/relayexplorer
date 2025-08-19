@@ -17,6 +17,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useNostr } from "@/hooks/useNostr"
+import { useIsMobile } from "@/hooks/use-mobile"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 const SIDEBAR_WIDTH_KEY = 'sidebar-width'
@@ -26,11 +27,12 @@ export default function Page() {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY)
-      return saved ? parseInt(saved, 10) : 350
+      return saved ? parseInt(saved, 10) : 700 // Increased default to accommodate dual sidebars
     }
-    return 350
+    return 700
   })
   const { relayUrl, relayMetadata } = useNostr()
+  const isMobile = useIsMobile()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const isResizing = useRef(false)
 
@@ -45,7 +47,7 @@ export default function Page() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return
       
-      const newWidth = Math.max(200, Math.min(800, e.clientX))
+      const newWidth = Math.max(400, Math.min(1200, e.clientX)) // Increased min/max for dual sidebars
       setSidebarWidth(newWidth)
     }
     
@@ -67,7 +69,7 @@ export default function Page() {
     <SidebarProvider
       style={
         {
-          "--sidebar-width": `${sidebarWidth}px`,
+          "--sidebar-width": isMobile ? "100%" : `${sidebarWidth}px`,
         } as React.CSSProperties
       }
     >

@@ -223,7 +223,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
   // Events content (for tab or second sidebar)
   const eventsContent = (
     <>
-      <SidebarHeader className="gap-3.5 border-b p-2 md:p-4">
+      <SidebarHeader className="gap-3.5 border-b p-2 md:p-4 flex-shrink-0">
         {!isMobile && (
           <>
             <RelayConnector />
@@ -252,7 +252,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
           onKindsChange={handleKindsChange}
         />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="flex-1 overflow-y-auto">
         <SidebarGroup className="px-0">
           <SidebarGroupContent>
             {!isConnected ? (
@@ -526,44 +526,38 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
     )
   }
 
-  // Desktop: Two sidebars (original layout)
+  // Desktop: Two full-width sidebars
   return (
     <Sidebar
       collapsible="icon"
       className="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
       {...props}
     >
-      {/* This is the first sidebar */}
-      {/* We disable collapsible and adjust width to icon. */}
-      {/* This will make the sidebar appear as icons. */}
+      {/* First sidebar: Profiles - Full width on desktop */}
       <Sidebar
         collapsible="none"
-        className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
+        className="w-80 border-r flex flex-col h-full"
       >
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
-                <a href="https://github.com/nostrocket/relayexplorer">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <GitBranchIcon className="size-4" />
-                  </div>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarHeader className="gap-3.5 border-b p-2 md:p-4 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <a href="https://github.com/nostrocket/relayexplorer" className="flex items-center gap-2">
+              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <GitBranchIcon className="size-4" />
+              </div>
+              <span className="font-semibold">Relay Explorer</span>
+            </a>
+          </div>
         </SidebarHeader>
-        <SidebarContent className="scrollbar-hide">
+        <SidebarContent className="flex-1 overflow-y-auto">
           {profilesContent}
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="flex-shrink-0">
           <NavUser user={mockData.user} />
         </SidebarFooter>
       </Sidebar>
 
-      {/* This is the second sidebar */}
-      {/* We disable collapsible and let it fill remaining space */}
-      <Sidebar collapsible="none" className="flex-1 flex">
+      {/* Second sidebar: Events - Full width on desktop */}
+      <Sidebar collapsible="none" className="w-96 border-r flex flex-col h-full">
         {eventsContent}
       </Sidebar>
     </Sidebar>
