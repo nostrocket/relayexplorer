@@ -158,16 +158,16 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
 
   // Profiles content (for tab or first sidebar) - memoized
   const profilesContent = React.useMemo(() => (
-    <SidebarGroup>
-      <SidebarGroupContent className="px-1.5 md:px-0">
-        <SidebarMenu>
+    <SidebarGroup className="flex-1 min-h-0">
+      <SidebarGroupContent className="px-1.5 md:px-0 flex-1 min-h-0">
+        <SidebarMenu className="flex-1 min-h-0">
           {uniquePubkeys.length > 50 ? (
-            // Use virtualization for large lists
+            // Use virtualization for large lists - full height
             <VirtualizedProfileList
               profiles={uniquePubkeys}
               activePubkey={activePubkey}
               onProfileSelect={handleProfileSelect}
-              height={400}
+              height={500}
               showAllProfilesButton={true}
             />
           ) : (
@@ -528,17 +528,10 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
 
   // Desktop: Two full-width sidebars
   return (
-    <Sidebar
-      collapsible="icon"
-      className="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
-      {...props}
-    >
-      {/* First sidebar: Profiles - Full width on desktop */}
-      <Sidebar
-        collapsible="none"
-        className="w-80 border-r flex flex-col h-screen"
-      >
-        <SidebarHeader className="gap-3.5 border-b p-2 md:p-4 flex-shrink-0">
+    <div className="flex h-screen">
+      {/* First sidebar: Profiles */}
+      <div className="w-80 border-r flex flex-col h-screen bg-sidebar">
+        <div className="gap-3.5 border-b p-2 md:p-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <a href="https://github.com/nostrocket/relayexplorer" className="flex items-center gap-2">
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
@@ -547,20 +540,22 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
               <span className="font-semibold">Relay Explorer</span>
             </a>
           </div>
-        </SidebarHeader>
-        <SidebarContent className="flex-1 min-h-0 overflow-y-auto">
-          {profilesContent}
-        </SidebarContent>
-        <SidebarFooter className="flex-shrink-0">
+        </div>
+        <div className="flex-1 min-h-0">
+          <div className="h-full overflow-y-auto">
+            {profilesContent}
+          </div>
+        </div>
+        <div className="flex-shrink-0 p-2">
           <NavUser user={mockData.user} />
-        </SidebarFooter>
-      </Sidebar>
+        </div>
+      </div>
 
-      {/* Second sidebar: Events - Full width on desktop */}
-      <Sidebar collapsible="none" className="w-96 border-r flex flex-col h-screen">
+      {/* Second sidebar: Events */}
+      <div className="w-96 border-r flex flex-col h-screen bg-sidebar">
         {eventsContent}
-      </Sidebar>
-    </Sidebar>
+      </div>
+    </div>
   )
 });
 
