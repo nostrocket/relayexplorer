@@ -49,7 +49,7 @@ export class NIP66RelayDiscovery {
       await new Promise(resolve => setTimeout(resolve, 4000));
       
       // Check how many relays connected
-      const connectedRelays = Array.from(this.discoveryNdk.pool?.relays?.values() || [])
+      Array.from(this.discoveryNdk.pool?.relays?.values() || [])
         .filter(relay => relay.status === NDKRelayStatus.CONNECTED);
       
       

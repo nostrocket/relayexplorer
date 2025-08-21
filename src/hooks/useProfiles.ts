@@ -38,7 +38,7 @@ export const useProfiles = (profileEventsMap: Map<string, NDKEvent>) => {
   useEffect(() => {
     const newProfiles = new Map<string, CachedProfile>();
     
-    profileEventsMap.forEach((event, pubkey) => {
+    profileEventsMap.forEach((event) => {
       if (event.kind === 0 && event.content && event.pubkey) {
         const profileData = parseProfileData(event.content);
         if (profileData) {

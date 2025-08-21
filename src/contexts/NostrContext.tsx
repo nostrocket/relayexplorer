@@ -111,7 +111,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       // Set up connection event listeners
-      newNdk.pool.on('relay:connect', (relay: NDKRelay) => {
+      newNdk.pool.on('relay:connect', () => {
         setIsConnected(true);
         setConnectionStatus('connected');
         setConnectionError(null);
@@ -122,7 +122,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       });
 
-      newNdk.pool.on('relay:disconnect', (relay: NDKRelay) => {
+      newNdk.pool.on('relay:disconnect', () => {
         setIsConnected(false);
         setConnectionStatus('disconnected');
       });
