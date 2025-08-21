@@ -77,7 +77,13 @@ const extractUniquePubkeys = (
     if (a.hasProfile && !b.hasProfile) return -1;
     if (!a.hasProfile && b.hasProfile) return 1;
     
-    // Within each group, sort alphabetically by display name
+    // Within each group, prioritize profiles with pictures over those without
+    const aHasPicture = !!a.avatarUrl;
+    const bHasPicture = !!b.avatarUrl;
+    if (aHasPicture && !bHasPicture) return -1;
+    if (!aHasPicture && bHasPicture) return 1;
+    
+    // Within each subgroup, sort alphabetically by display name
     return a.displayName.localeCompare(b.displayName);
   });
 };
