@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useNostr } from '@/hooks/useNostr';
 import { useRelay } from '@/hooks/useRelay';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2, Clock, Hash } from 'lucide-react';
 import { RelayCombobox } from './relay-combobox';
 import type { SubscriptionTimeFilter } from '@/types/app';
 
@@ -16,6 +16,9 @@ export const RelayConnector: React.FC = () => {
   const [timeFilterEnabled, setTimeFilterEnabled] = useState(false);
   const [sinceSeconds, setSinceSeconds] = useState('86400');
   const [timeFilterError, setTimeFilterError] = useState<string | null>(null);
+  const [limitEnabled, setLimitEnabled] = useState(false);
+  const [eventLimit, setEventLimit] = useState('100');
+  const [limitError, setLimitError] = useState<string | null>(null);
   const { isConnected, connect, disconnect, connectionStatus } = useNostr();
   const { validateRelayUrl } = useRelay();
 
@@ -46,7 +49,7 @@ export const RelayConnector: React.FC = () => {
     return numbers;
   };
 
-  const validateTimeFilter = (seconds: string): SubscriptionTimeFilter | null => {
+  const validateTimeFilter = (seconds: string): Partial<SubscriptionTimeFilter> | null => {
     if (!timeFilterEnabled) {
       setTimeFilterError(null);
       return null;
@@ -74,6 +77,32 @@ export const RelayConnector: React.FC = () => {
     return { since: sinceTimestamp };
   };
 
+  const validateEventLimit = (limit: string): number | null => {
+    if (!limitEnabled) {
+      setLimitError(null);
+      return null;
+    }
+
+    if (!limit.trim()) {
+      setLimitError('Event limit cannot be empty when limit is enabled');
+      return null;
+    }
+
+    const numLimit = parseInt(limit, 10);
+    if (isNaN(numLimit) || numLimit <= 0) {
+      setLimitError('Event limit must be a positive integer');
+      return null;
+    }
+
+    if (numLimit > 5000) {
+      setLimitError('Event limit cannot exceed 5000');
+      return null;
+    }
+
+    setLimitError(null);
+    return numLimit;
+  };
+
   const handleConnect = async () => {
     if (!validateRelayUrl(inputUrl)) {
       alert('Please enter a valid WebSocket URL (ws:// or wss://)');
@@ -89,11 +118,23 @@ export const RelayConnector: React.FC = () => {
     if (timeFilterEnabled && !timeFilter) {
       return;
     }
+
+    const limit = validateEventLimit(eventLimit);
+    if (limitEnabled && limit === null) {
+      return;
+    }
+
+    // Combine time filter and limit into a single filter object
+    const combinedFilter: SubscriptionTimeFilter | undefined = 
+      timeFilter || limitEnabled ? {
+        ...timeFilter,
+        ...(limit !== null ? { limit } : {})
+      } : undefined;
     
     if (isConnected) {
       disconnect();
     } else {
-      await connect(inputUrl, parsedKinds, timeFilter || undefined);
+      await connect(inputUrl, parsedKinds, combinedFilter);
     }
   };
 
@@ -110,6 +151,14 @@ export const RelayConnector: React.FC = () => {
     if (timeFilterError) {
       // Clear error when user starts typing
       setTimeFilterError(null);
+    }
+  };
+
+  const handleEventLimitChange = (value: string) => {
+    setEventLimit(value);
+    if (limitError) {
+      // Clear error when user starts typing
+      setLimitError(null);
     }
   };
 
@@ -180,6 +229,47 @@ export const RelayConnector: React.FC = () => {
             )}
             <p className="text-xs text-muted-foreground">
               Leave unchecked to get all available events from the relay. Max: 31536000 seconds (1 year). Default: 86400 (24 hours).
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="event-limit"
+            checked={limitEnabled}
+            onCheckedChange={setLimitEnabled}
+            disabled={connectionStatus === 'connecting'}
+          />
+          <Label htmlFor="event-limit" className="flex items-center space-x-1">
+            <Hash className="h-4 w-4" />
+            <span>Limit number of events</span>
+          </Label>
+        </div>
+
+        {limitEnabled && (
+          <div className="space-y-2 pl-6">
+            <label htmlFor="event-limit-input" className="text-sm font-medium">
+              Maximum number of events
+            </label>
+            <Input
+              id="event-limit-input"
+              type="number"
+              value={eventLimit}
+              onChange={(e) => handleEventLimitChange(e.target.value)}
+              placeholder="100"
+              min="1"
+              max="5000"
+              step="1"
+              disabled={connectionStatus === 'connecting'}
+              className={limitError ? "border-red-500" : ""}
+            />
+            {limitError && (
+              <p className="text-sm text-red-500">{limitError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Leave unchecked to get all available events. Max: 5000 events. Default: 100 events.
             </p>
           </div>
         )}

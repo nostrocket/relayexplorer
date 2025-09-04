@@ -32,6 +32,11 @@ export const useEvents = (initialFilter?: EventFilter) => {
       ndkFilter.until = subscriptionTimeFilter.until;
     }
     
+    // Apply limit filter from context
+    if (subscriptionTimeFilter?.limit) {
+      ndkFilter.limit = subscriptionTimeFilter.limit;
+    }
+    
     return ndkFilter;
   }, [subscriptionKinds, subscriptionTimeFilter]);
 

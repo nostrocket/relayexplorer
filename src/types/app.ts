@@ -11,6 +11,7 @@ export interface EventFilter {
 export interface SubscriptionTimeFilter {
   since?: number; // Unix timestamp in seconds
   until?: number; // Unix timestamp in seconds
+  limit?: number; // Maximum number of events to retrieve
 }
 
 export interface RelayConnection {
