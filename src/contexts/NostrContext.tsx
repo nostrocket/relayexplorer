@@ -17,6 +17,8 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [relayMetadata, setRelayMetadata] = useState<RelayMetadata | null>(null);
   const [subscriptionKinds, setSubscriptionKinds] = useState<number[] | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [eoseCount, setEoseCount] = useState(0);
+  const [lastEoseTimestamp, setLastEoseTimestamp] = useState<Date | null>(null);
   
   // Resource management
   const activeSubscriptions = useRef<Set<NDKSubscription>>(new Set());
@@ -197,6 +199,8 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setRelayUrl(null);
     setRelayMetadata(null);
     setSubscriptionKinds(null);
+    setEoseCount(0);
+    setLastEoseTimestamp(null);
   }, [ndk]);
 
   const subscribe = useCallback((filter: NDKFilter, callback: (event: NDKEvent) => void): NDKSubscription | null => {
@@ -227,6 +231,15 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       
       subscription.on('eose', () => {
+        const timestamp = new Date();
+        setEoseCount(prev => prev + 1);
+        setLastEoseTimestamp(timestamp);
+        console.log('🔚 EOSE received in NostrContext:', {
+          timestamp: timestamp.toISOString(),
+          relay: relayUrl,
+          filter: filter,
+          totalEoseCount: eoseCount + 1
+        });
       });
 
       subscription.on('close', () => {
@@ -295,7 +308,9 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       connect,
       disconnect,
       subscribe,
-      connectionStatus
+      connectionStatus,
+      eoseCount,
+      lastEoseTimestamp
     }}>
       {children}
     </NostrContext.Provider>

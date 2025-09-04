@@ -9,7 +9,9 @@ export const RelayStatus: React.FC = () => {
     connectionError, 
     relayUrl, 
     relayMetadata, 
-    isConnected 
+    isConnected,
+    eoseCount,
+    lastEoseTimestamp
   } = useNostr();
 
   const getStatusIcon = () => {
@@ -83,9 +85,23 @@ export const RelayStatus: React.FC = () => {
           </div>
         )}
 
+        {eoseCount > 0 && (
+          <div className="border-t pt-2 mt-2 space-y-1">
+            <div className="text-xs">
+              <span className="font-medium">EOSE Events:</span> {eoseCount}
+            </div>
+            {lastEoseTimestamp && (
+              <div className="text-xs text-muted-foreground">
+                <span className="font-medium">Last EOSE:</span> {lastEoseTimestamp.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
           <Info className="h-3 w-3" />
           Status: {isConnected ? 'Ready for events' : 'Not receiving events'}
+          {eoseCount > 0 && <span className="ml-2">📄 {eoseCount} EOSE</span>}
         </div>
       </CardContent>
     </Card>

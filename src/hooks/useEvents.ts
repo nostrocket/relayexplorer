@@ -132,6 +132,11 @@ export const useEvents = (initialFilter?: EventFilter) => {
 
       // Handle subscription end
       newSubscription.on('eose', () => {
+        console.log('🔚 EOSE received - End of stored events for subscription:', {
+          timestamp: new Date().toISOString(),
+          filter: ndkFilter,
+          eventCount: eventsMap.size
+        });
         clearTimeout(timeout);
         setLoading(false);
       });

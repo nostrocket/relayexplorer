@@ -15,6 +15,8 @@ interface NostrContextType {
   disconnect: () => void;
   subscribe: (filter: NDKFilter, callback: (event: NDKEvent) => void) => NDKSubscription | null;
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
+  eoseCount: number;
+  lastEoseTimestamp: Date | null;
 }
 
 export const NostrContext = createContext<NostrContextType | undefined>(undefined);
