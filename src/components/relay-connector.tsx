@@ -77,29 +77,30 @@ export const RelayConnector: React.FC = () => {
     return { since: sinceTimestamp };
   };
 
-  const validateEventLimit = (limit: string): number | null => {
+  const validateEventLimit = (limit: string): number => {
+    setLimitError(null);
+    
     if (!limitEnabled) {
-      setLimitError(null);
-      return null;
+      // Return a reasonable default limit when custom limit is disabled
+      return 2000;
     }
 
     if (!limit.trim()) {
-      setLimitError('Event limit cannot be empty when limit is enabled');
-      return null;
+      setLimitError('Event limit cannot be empty when custom limit is enabled');
+      return 2000; // fallback to default
     }
 
     const numLimit = parseInt(limit, 10);
     if (isNaN(numLimit) || numLimit <= 0) {
       setLimitError('Event limit must be a positive integer');
-      return null;
+      return 2000; // fallback to default
     }
 
     if (numLimit > 5000) {
       setLimitError('Event limit cannot exceed 5000');
-      return null;
+      return 2000; // fallback to default
     }
 
-    setLimitError(null);
     return numLimit;
   };
 
@@ -120,16 +121,12 @@ export const RelayConnector: React.FC = () => {
     }
 
     const limit = validateEventLimit(eventLimit);
-    if (limitEnabled && limit === null) {
-      return;
-    }
-
-    // Combine time filter and limit into a single filter object
-    const combinedFilter: SubscriptionTimeFilter | undefined = 
-      timeFilter || limitEnabled ? {
-        ...timeFilter,
-        ...(limit !== null ? { limit } : {})
-      } : undefined;
+    
+    // Always include limit (either custom or default) to override relay defaults
+    const combinedFilter: SubscriptionTimeFilter = {
+      ...timeFilter,
+      limit
+    };
     
     if (isConnected) {
       disconnect();
@@ -244,8 +241,13 @@ export const RelayConnector: React.FC = () => {
           />
           <Label htmlFor="event-limit" className="flex items-center space-x-1">
             <Hash className="h-4 w-4" />
-            <span>Limit number of events</span>
+            <span>Custom event limit</span>
           </Label>
+          {!limitEnabled && (
+            <span className="text-xs text-muted-foreground ml-2">
+              (default: 2000 events)
+            </span>
+          )}
         </div>
 
         {limitEnabled && (
@@ -269,7 +271,7 @@ export const RelayConnector: React.FC = () => {
               <p className="text-sm text-red-500">{limitError}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Leave unchecked to get all available events. Max: 5000 events. Default: 100 events.
+              Use a custom limit instead of the default 2000 events. Max: 5000 events.
             </p>
           </div>
         )}
