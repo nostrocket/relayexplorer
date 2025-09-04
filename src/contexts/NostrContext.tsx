@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import NDK, { NDKEvent, NDKSubscription, NDKRelay } from '@nostr-dev-kit/ndk';
 import type { NDKFilter } from '@nostr-dev-kit/ndk';
-import type { RelayMetadata } from '@/types/app';
+import type { RelayMetadata, SubscriptionTimeFilter } from '@/types/app';
 import { NostrContext } from '@/contexts/NostrContextType';
 
 const MAX_SUBSCRIPTIONS = 10; // Limit active subscriptions
@@ -16,6 +16,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [relayUrl, setRelayUrl] = useState<string | null>(null);
   const [relayMetadata, setRelayMetadata] = useState<RelayMetadata | null>(null);
   const [subscriptionKinds, setSubscriptionKinds] = useState<number[] | null>(null);
+  const [subscriptionTimeFilter, setSubscriptionTimeFilter] = useState<SubscriptionTimeFilter | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [eoseCount, setEoseCount] = useState(0);
   const [lastEoseTimestamp, setLastEoseTimestamp] = useState<Date | null>(null);
@@ -63,7 +64,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
-  const connect = useCallback(async (url: string, kinds?: number[]) => {
+  const connect = useCallback(async (url: string, kinds?: number[], timeFilter?: SubscriptionTimeFilter) => {
     try {
       // Clear existing timeouts
       if (connectionTimeoutRef.current) {
@@ -77,6 +78,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setConnectionError(null);
       setRelayUrl(url);
       setSubscriptionKinds(kinds || [0, 1]); // Default to profile and text note kinds
+      setSubscriptionTimeFilter(timeFilter || null);
 
       // Cleanup existing connections and subscriptions
       if (ndk) {
@@ -199,6 +201,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setRelayUrl(null);
     setRelayMetadata(null);
     setSubscriptionKinds(null);
+    setSubscriptionTimeFilter(null);
     setEoseCount(0);
     setLastEoseTimestamp(null);
   }, [ndk]);
@@ -305,6 +308,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       relayUrl,
       relayMetadata,
       subscriptionKinds,
+      subscriptionTimeFilter,
       connect,
       disconnect,
       subscribe,

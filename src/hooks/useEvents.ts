@@ -6,7 +6,7 @@ import type { EventFilter } from '@/types/app';
 
 
 export const useEvents = (initialFilter?: EventFilter) => {
-  const { ndk, isConnected, subscribe, subscriptionKinds } = useNostr();
+  const { ndk, isConnected, subscribe, subscriptionKinds, subscriptionTimeFilter } = useNostr();
   const [eventsMap, setEventsMap] = useState<Map<string, NDKEvent>>(new Map());
   const [profileEventsMap, setProfileEventsMap] = useState<Map<string, NDKEvent>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,7 @@ export const useEvents = (initialFilter?: EventFilter) => {
   const [filter, setFilter] = useState<EventFilter>(initialFilter || {});
   const subscriptionRef = useRef<NDKSubscription | null>(null);
 
-  // Subscription filter using the configured event kinds
+  // Subscription filter using the configured event kinds and time filter
   const ndkFilter = useMemo((): NDKFilter => {
     const ndkFilter: NDKFilter = {};
     
@@ -23,8 +23,17 @@ export const useEvents = (initialFilter?: EventFilter) => {
       ndkFilter.kinds = subscriptionKinds;
     }
     
+    // Apply time filter from context
+    if (subscriptionTimeFilter?.since) {
+      ndkFilter.since = subscriptionTimeFilter.since;
+    }
+    
+    if (subscriptionTimeFilter?.until) {
+      ndkFilter.until = subscriptionTimeFilter.until;
+    }
+    
     return ndkFilter;
-  }, [subscriptionKinds]);
+  }, [subscriptionKinds, subscriptionTimeFilter]);
 
   // Convert Map to sorted array - memoized for performance
   const events = useMemo(() => {

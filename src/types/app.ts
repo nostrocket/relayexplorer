@@ -8,6 +8,11 @@ export interface EventFilter {
   };
 }
 
+export interface SubscriptionTimeFilter {
+  since?: number; // Unix timestamp in seconds
+  until?: number; // Unix timestamp in seconds
+}
+
 export interface RelayConnection {
   url: string;
   status: 'connecting' | 'connected' | 'disconnected' | 'error';

@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useNostr } from '@/hooks/useNostr';
 import { useRelay } from '@/hooks/useRelay';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Clock } from 'lucide-react';
 import { RelayCombobox } from './relay-combobox';
+import type { SubscriptionTimeFilter } from '@/types/app';
 
 export const RelayConnector: React.FC = () => {
   const [inputUrl, setInputUrl] = useState('wss://relay.damus.io');
   const [eventKinds, setEventKinds] = useState('0,1');
   const [kindsError, setKindsError] = useState<string | null>(null);
+  const [timeFilterEnabled, setTimeFilterEnabled] = useState(false);
+  const [sinceSeconds, setSinceSeconds] = useState('86400');
+  const [timeFilterError, setTimeFilterError] = useState<string | null>(null);
   const { isConnected, connect, disconnect, connectionStatus } = useNostr();
   const { validateRelayUrl } = useRelay();
 
@@ -40,6 +46,34 @@ export const RelayConnector: React.FC = () => {
     return numbers;
   };
 
+  const validateTimeFilter = (seconds: string): SubscriptionTimeFilter | null => {
+    if (!timeFilterEnabled) {
+      setTimeFilterError(null);
+      return null;
+    }
+
+    if (!seconds.trim()) {
+      setTimeFilterError('Seconds cannot be empty when time filter is enabled');
+      return null;
+    }
+
+    const numSeconds = parseFloat(seconds);
+    if (isNaN(numSeconds) || numSeconds <= 0) {
+      setTimeFilterError('Seconds must be a positive number');
+      return null;
+    }
+
+    if (numSeconds > 31536000) { // 365 days in seconds
+      setTimeFilterError('Seconds cannot exceed 31536000 (1 year)');
+      return null;
+    }
+
+    const sinceTimestamp = Math.floor((Date.now() - (numSeconds * 1000)) / 1000);
+    
+    setTimeFilterError(null);
+    return { since: sinceTimestamp };
+  };
+
   const handleConnect = async () => {
     if (!validateRelayUrl(inputUrl)) {
       alert('Please enter a valid WebSocket URL (ws:// or wss://)');
@@ -50,11 +84,16 @@ export const RelayConnector: React.FC = () => {
     if (!parsedKinds) {
       return;
     }
+
+    const timeFilter = validateTimeFilter(sinceSeconds);
+    if (timeFilterEnabled && !timeFilter) {
+      return;
+    }
     
     if (isConnected) {
       disconnect();
     } else {
-      await connect(inputUrl, parsedKinds);
+      await connect(inputUrl, parsedKinds, timeFilter || undefined);
     }
   };
 
@@ -63,6 +102,14 @@ export const RelayConnector: React.FC = () => {
     if (kindsError) {
       // Clear error when user starts typing
       setKindsError(null);
+    }
+  };
+
+  const handleSinceSecondsChange = (value: string) => {
+    setSinceSeconds(value);
+    if (timeFilterError) {
+      // Clear error when user starts typing
+      setTimeFilterError(null);
     }
   };
 
@@ -95,6 +142,47 @@ export const RelayConnector: React.FC = () => {
         <p className="text-xs text-muted-foreground">
           Default: 0 (profiles), 1 (text notes). Use comma-separated integers for multiple kinds.
         </p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="time-filter"
+            checked={timeFilterEnabled}
+            onCheckedChange={setTimeFilterEnabled}
+            disabled={connectionStatus === 'connecting'}
+          />
+          <Label htmlFor="time-filter" className="flex items-center space-x-1">
+            <Clock className="h-4 w-4" />
+            <span>Limit by time period</span>
+          </Label>
+        </div>
+
+        {timeFilterEnabled && (
+          <div className="space-y-2 pl-6">
+            <label htmlFor="since-seconds" className="text-sm font-medium">
+              Show events from last (seconds)
+            </label>
+            <Input
+              id="since-seconds"
+              type="number"
+              value={sinceSeconds}
+              onChange={(e) => handleSinceSecondsChange(e.target.value)}
+              placeholder="86400"
+              min="1"
+              max="31536000"
+              step="1"
+              disabled={connectionStatus === 'connecting'}
+              className={timeFilterError ? "border-red-500" : ""}
+            />
+            {timeFilterError && (
+              <p className="text-sm text-red-500">{timeFilterError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Leave unchecked to get all available events from the relay. Max: 31536000 seconds (1 year). Default: 86400 (24 hours).
+            </p>
+          </div>
+        )}
       </div>
       
       <Button 
