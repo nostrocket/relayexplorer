@@ -690,7 +690,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
                 <GitBranchIcon className="size-4" />                   {/* Git branch icon for relay explorer */}
               </div>
               {/* App title */}
-              <span className="font-semibold">Relay Explorer</span>     {/* Clickable title links to GitHub */}
+              <span className="font-semibold">Nostr Rodeo</span>     {/* Clickable title links to GitHub */}
             </a>
           </div>
         </div>

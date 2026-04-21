@@ -21,19 +21,28 @@ Built on a modern foundation:
 - **React 19** + TypeScript for robust development
 - **Vite 7** for lightning-fast builds and development
 - **shadcn/ui** + Tailwind CSS v4 for beautiful, accessible components
-- **NDK/nostr-tools** for Nostr protocol compliance
+- **NDK** (`@nostr-dev-kit/ndk`) for Nostr protocol compliance
 - **Responsive design** that works perfectly on mobile and desktop
 
 ## 🚀 Quick Start
 
 ```bash
 git clone [repository-url]
-cd relay_browser
+cd relayexplorer
 npm install
 npm run dev
 ```
 
 Visit `http://localhost:5173` and start exploring the decentralized web!
+
+### Scripts
+
+- `npm run dev` — start the Vite dev server (binds to the network so you can test from other devices)
+- `npm run build` — typecheck and produce a production build in `dist/`
+- `npm run lint` — run ESLint
+- `npm run preview` — serve the built `dist/` locally
+
+Deployments to GitHub Pages happen automatically on push to `main` via `.github/workflows/pages.yml`.
 
 ## 🎯 Perfect For
 

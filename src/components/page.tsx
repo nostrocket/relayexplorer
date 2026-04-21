@@ -95,7 +95,7 @@ export default function Page() {
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
                 <BreadcrumbPage className="truncate">
-                  {relayMetadata?.name || (relayUrl ? 'Relay Explorer' : 'Not Connected')}
+                  {relayMetadata?.name || (relayUrl ? 'Nostr Rodeo' : 'Not Connected')}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
