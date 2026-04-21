@@ -38,9 +38,9 @@ const EventItem = memo(({ index, style, data }: EventItemProps) => {
     <div style={style}>
       <button
         onClick={() => onEventSelect(event)}
-        className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 md:p-4 text-sm leading-tight whitespace-nowrap w-full text-left transition-colors min-h-[60px] ${
-          isSelected 
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+        className={`hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex h-full w-full flex-col items-start justify-center gap-1 border-b p-2 text-sm leading-tight whitespace-nowrap text-left transition-colors ${
+          isSelected
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
             : ''
         }`}
       >

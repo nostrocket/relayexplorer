@@ -1,21 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { EventViewer } from "@/components/event-viewer"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useNostr } from "@/hooks/useNostr"
 import { useIsMobile } from "@/hooks/use-mobile"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
@@ -24,6 +10,7 @@ const SIDEBAR_WIDTH_KEY = 'sidebar-width'
 
 export default function Page() {
   const [selectedEvent, setSelectedEvent] = useState<NDKEvent | null>(null)
+  const [activePubkey, setActivePubkey] = useState<string | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY)
@@ -31,7 +18,12 @@ export default function Page() {
     }
     return 700
   })
-  const { relayUrl, relayMetadata } = useNostr()
+  const { fetchEventById } = useNostr()
+
+  const handleSelectEvent = useCallback(async (id: string) => {
+    const event = await fetchEventById(id)
+    if (event) setSelectedEvent(event)
+  }, [fetchEventById])
   const isMobile = useIsMobile()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const isResizing = useRef(false)
@@ -67,6 +59,7 @@ export default function Page() {
 
   return (
     <SidebarProvider
+      className="h-svh overflow-hidden"
       style={
         {
           "--sidebar-width": isMobile ? "100%" : `${sidebarWidth}px`,
@@ -74,37 +67,22 @@ export default function Page() {
       }
     >
       <div ref={sidebarRef} className="relative">
-        <AppSidebar onEventSelect={setSelectedEvent} />
+        <AppSidebar
+          onEventSelect={setSelectedEvent}
+          activePubkey={activePubkey}
+          onActivePubkeyChange={setActivePubkey}
+        />
         <div
           className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-border transition-colors z-50 hidden md:block"
           onMouseDown={startResize}
         />
       </div>
       <SidebarInset>
-        <header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-2 md:p-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb className="flex-1 min-w-0">
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">Nostr Relays</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="truncate">
-                  {relayMetadata?.name || (relayUrl ? 'Nostr Rodeo' : 'Not Connected')}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
-        </header>
-        <EventViewer event={selectedEvent} />
+        <EventViewer
+          event={selectedEvent}
+          onSelectPubkey={setActivePubkey}
+          onSelectEvent={handleSelectEvent}
+        />
       </SidebarInset>
     </SidebarProvider>
   )

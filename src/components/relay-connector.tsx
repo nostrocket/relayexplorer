@@ -169,27 +169,30 @@ export const RelayConnector: React.FC = () => {
         placeholder="Enter relay URL or select from popular relays..."
       />
       
-      <div className="space-y-2">
-        <label htmlFor="event-kinds" className="text-sm font-medium">
-          Event Kinds (comma-separated)
-        </label>
-        <Input
-          id="event-kinds"
-          type="text"
-          value={eventKinds}
-          onChange={(e) => handleEventKindsChange(e.target.value)}
-          placeholder="1"
-          disabled={connectionStatus === 'connecting'}
-          className={kindsError ? "border-red-500" : ""}
-        />
-        {kindsError && (
-          <p className="text-sm text-red-500">{kindsError}</p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Default: 1 (text notes). Profiles (kind 0) are fetched on demand. Use comma-separated integers for multiple kinds.
-        </p>
-      </div>
+      {!isConnected && (
+        <div className="space-y-2">
+          <label htmlFor="event-kinds" className="text-sm font-medium">
+            Event Kinds (comma-separated)
+          </label>
+          <Input
+            id="event-kinds"
+            type="text"
+            value={eventKinds}
+            onChange={(e) => handleEventKindsChange(e.target.value)}
+            placeholder="1"
+            disabled={connectionStatus === 'connecting'}
+            className={kindsError ? "border-red-500" : ""}
+          />
+          {kindsError && (
+            <p className="text-sm text-red-500">{kindsError}</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Default: 1 (text notes). Profiles (kind 0) are fetched on demand. Use comma-separated integers for multiple kinds.
+          </p>
+        </div>
+      )}
 
+      {!isConnected && (
       <div className="space-y-3">
         <div className="flex items-center space-x-2">
           <Switch
@@ -230,7 +233,9 @@ export const RelayConnector: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
+      {!isConnected && (
       <div className="space-y-3">
         <div className="flex items-center space-x-2">
           <Switch
@@ -276,7 +281,8 @@ export const RelayConnector: React.FC = () => {
           </div>
         )}
       </div>
-      
+      )}
+
       <Button 
         onClick={handleConnect}
         disabled={connectionStatus === 'connecting'}

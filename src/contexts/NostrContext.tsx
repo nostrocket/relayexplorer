@@ -222,6 +222,41 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setProfileEventsMap(new Map());
   }, [ndk]);
 
+  const fetchEventById = useCallback((id: string): Promise<NDKEvent | null> => {
+    return new Promise((resolve) => {
+      if (!ndk) {
+        resolve(null);
+        return;
+      }
+
+      let settled = false;
+      let sub: NDKSubscription | null = null;
+
+      const finish = (event: NDKEvent | null) => {
+        if (settled) return;
+        settled = true;
+        if (sub) {
+          try { sub.stop(); } catch { /* noop */ }
+          activeSubscriptions.current.delete(sub);
+        }
+        resolve(event);
+      };
+
+      try {
+        sub = ndk.subscribe({ ids: [id], limit: 1 });
+        activeSubscriptions.current.add(sub);
+        sub.on('event', (event: NDKEvent) => finish(event));
+        sub.on('eose', () => finish(null));
+        sub.on('close', () => finish(null));
+        sub.start();
+        setTimeout(() => finish(null), 6000);
+      } catch (error) {
+        console.warn('fetchEventById failed:', error);
+        finish(null);
+      }
+    });
+  }, [ndk]);
+
   const subscribe = useCallback((filter: NDKFilter, callback: (event: NDKEvent) => void): NDKSubscription | null => {
     if (!ndk) {
       console.warn('Cannot subscribe: NDK not initialized');
@@ -324,6 +359,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       relayUrl,
       relayMetadata,
       subscriptionKinds,
+      setSubscriptionKinds,
       subscriptionTimeFilter,
       connect,
       disconnect,
@@ -333,6 +369,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       lastEoseTimestamp,
       profileEventsMap,
       recordProfileEvent,
+      fetchEventById,
     }}>
       {children}
     </NostrContext.Provider>

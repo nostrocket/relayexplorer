@@ -5,10 +5,10 @@
 import * as React from "react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 import { BullLogo } from "@/components/bull-logo"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 // UI component imports for building the sidebar structure
 import { NavUser } from "@/components/nav-user"        // User profile display at bottom of sidebar
-import { Label } from "@/components/ui/label"         // Labels for form controls
 import {
   Sidebar,                                            // Main sidebar container (used only in mobile)
   SidebarContent,                                     // Scrollable content area
@@ -22,7 +22,6 @@ import {
   SidebarMenuItem,                                    // Individual menu item wrapper
   useSidebar,                                         // Hook for sidebar state management
 } from "@/components/ui/sidebar"
-import { Switch } from "@/components/ui/switch"       // Toggle switch for real-time updates
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"  // Mobile tab navigation
 import { RelayConnector } from "@/components/relay-connector"  // Relay connection interface
 import { RelayStatus } from "@/components/relay-status"        // Connection status indicator
@@ -91,19 +90,20 @@ const extractUniquePubkeys = (
 // Component props - extends Sidebar props and adds event selection callback
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onEventSelect?: (event: NDKEvent) => void  // Called when user clicks an event in the right sidebar
+  activePubkey: string | null
+  onActivePubkeyChange: (pubkey: string | null) => void
 }
 
 // Main component: Creates responsive dual-sidebar layout for relay exploration
 // UI Result: On desktop = two side-by-side panels, on mobile = single panel with tabs
-export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarProps) => {
+export const AppSidebar = React.memo(({ onEventSelect, activePubkey, onActivePubkeyChange, ...props }: AppSidebarProps) => {
   // State management for UI interactions and data filtering
-  const [activePubkey, setActivePubkey] = React.useState<string | null>(null)     // UI: Highlighted profile in left sidebar
-  const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)  // UI: Highlighted event in right sidebar  
+  const [selectedEvent, setSelectedEvent] = React.useState<NDKEvent | null>(null)  // UI: Highlighted event in right sidebar
   const [searchTerm, setSearchTerm] = React.useState('')                          // UI: Search input value in right sidebar header
-  const [selectedKinds, setSelectedKinds] = React.useState<number[]>([])          // UI: Selected filter chips in right sidebar
   const [activeTab, setActiveTab] = React.useState('profiles')                    // UI: Active tab in mobile layout
   const { setOpen } = useSidebar()      // UI: Controls sidebar open/close state
-  const { isConnected } = useNostr()    // UI: Shows connection status and enables/disables content
+  const { isConnected, subscriptionKinds, setSubscriptionKinds } = useNostr()
+  const selectedKinds = React.useMemo(() => subscriptionKinds ?? [], [subscriptionKinds])
   const isMobile = useIsMobile()        // UI: Determines layout strategy (tabs vs dual sidebars)
   
   // Data fetching and management
@@ -120,47 +120,57 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
   
   // Note: No auto-selection of pubkey - "All Profiles" is default selection
   
-  // UI Data: Filter events based on selected profile (affects right sidebar content)
+  // UI Data: Filter events for display. Kinds filter matches the current subscription
+  // so switching kinds narrows the displayed list immediately (events fetched under
+  // a previous subscription stay in eventsMap but aren't shown).
   const events = React.useMemo(() => {
-    if (!activePubkey) return allEvents;  // Show all events when "All Profiles" selected
-    return allEvents.filter(event => event.pubkey === activePubkey);  // Show only selected author's events
-  }, [allEvents, activePubkey])
+    let filtered = allEvents
+    if (selectedKinds.length > 0) {
+      const kindSet = new Set(selectedKinds)
+      filtered = filtered.filter(e => kindSet.has(e.kind ?? -1))
+    }
+    if (activePubkey) {
+      filtered = filtered.filter(e => e.pubkey === activePubkey)
+    }
+    return filtered
+  }, [allEvents, selectedKinds, activePubkey])
 
-  // Debounced search functionality - prevents excessive API calls while user types
-  // UI Result: Search input in right sidebar header triggers filtered event display after 300ms pause
-  const debouncedUpdateFilter = React.useCallback(
-    React.useMemo(
-      () => {
-        let timeoutId: NodeJS.Timeout;
-        return (search: string, kinds: number[]) => {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => {
-            updateFilter({ 
-              search: search || undefined,      // Applied to event content/author filtering
-              kinds: kinds.length > 0 ? kinds : undefined  // Applied to event type filtering
-            });
-          }, 300); // 300ms debounce prevents excessive filtering
-        };
-      },
-      [updateFilter]
-    ),
-    [updateFilter]
-  );
+  // Debounced search filter (client-side content/author matching)
+  const debouncedUpdateSearch = React.useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return (search: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        updateFilter({ search: search || undefined });
+      }, 300);
+    };
+  }, [updateFilter]);
 
-  // Auto-apply search and filter changes to event display
   React.useEffect(() => {
-    debouncedUpdateFilter(searchTerm, selectedKinds);
-  }, [searchTerm, selectedKinds, debouncedUpdateFilter]);
+    debouncedUpdateSearch(searchTerm);
+  }, [searchTerm, debouncedUpdateSearch]);
+
+  // Debounced kind-filter: drives the relay subscription, so empty input means
+  // "no kinds restriction" and everything the relay carries flows in.
+  const debouncedSetKinds = React.useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return (kinds: number[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setSubscriptionKinds(kinds);
+      }, 300);
+    };
+  }, [setSubscriptionKinds]);
 
   // Profile selection handler - manages left sidebar interactions
   // UI Result: Highlights selected profile, filters right sidebar events, handles mobile navigation
   const handleProfileSelect = React.useCallback((pubkey: string | null) => {
-    setActivePubkey(pubkey)      // Highlights the clicked profile in left sidebar
-    setOpen(true)                // Ensures sidebar stays open after selection
+    onActivePubkeyChange(pubkey)  // Highlights the clicked profile in left sidebar
+    setOpen(true)                 // Ensures sidebar stays open after selection
     if (isMobile) {
-      setActiveTab('events')     // Auto-switches to events tab on mobile for better UX
+      setActiveTab('events')      // Auto-switches to events tab on mobile for better UX
     }
-  }, [setOpen, isMobile]);
+  }, [onActivePubkeyChange, setOpen, isMobile]);
 
   // Event selection handler - manages right sidebar event interactions  
   // UI Result: Highlights selected event and notifies parent component
@@ -175,16 +185,15 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
     setSearchTerm(e.target.value);  // Updates search box display and triggers filtering
   }, []);
 
-  // Filter selection handler - manages event kind filter chips
-  // UI Result: Updates selected filter chips and triggers event filtering
+  // Kinds input handler: pushes kinds to the subscription (debounced).
   const handleKindsChange = React.useCallback((kinds: number[]) => {
-    setSelectedKinds(kinds);     // Updates filter chip selection and triggers filtering
-  }, []);
+    debouncedSetKinds(kinds);
+  }, [debouncedSetKinds]);
 
   // Add ref and state for profile list container height
   const profileContainerRef = React.useRef<HTMLDivElement>(null);
   const [profileListHeight, setProfileListHeight] = React.useState(600);
-  
+
   // Calculate available height for profile list
   React.useEffect(() => {
     const updateHeight = () => {
@@ -195,15 +204,34 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
         setProfileListHeight(availableHeight);
       }
     };
-    
+
     updateHeight();
     const resizeObserver = new ResizeObserver(updateHeight);
     if (profileContainerRef.current) {
       resizeObserver.observe(profileContainerRef.current);
     }
-    
+
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Event list container height (drives the VirtualizedEventList `height` prop).
+  // Uses a callback ref so the observer re-initializes whenever the wrapping div
+  // mounts or unmounts (e.g. on events.length crossing the 50-item threshold, or
+  // switching between the mobile/desktop layouts).
+  const [eventListNode, setEventListNode] = React.useState<HTMLDivElement | null>(null);
+  const [eventListHeight, setEventListHeight] = React.useState(400);
+
+  React.useEffect(() => {
+    if (!eventListNode) return;
+    const updateHeight = () => {
+      const rect = eventListNode.getBoundingClientRect();
+      setEventListHeight(Math.max(200, rect.height));
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(eventListNode);
+    return () => observer.disconnect();
+  }, [eventListNode]);
 
   // LEFT SIDEBAR CONTENT: Profile list with "All Profiles" option and individual authors
   // UI Result: Scrollable list of clickable profile items with avatars and names in left sidebar
@@ -295,23 +323,12 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
           </>
         )}
         
-        {/* Profile Selection Summary and Real-time Toggle */}
-        {/* UI Result: Shows current selection (e.g. "All Profiles (512 events)") with toggle switch */}
-        <div className="flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="text-foreground text-sm md:text-base font-medium">
-            {/* Current selection display - updates based on left sidebar selection */}
-            {activePubkey ? getDisplayName(activePubkey) : 'All Profiles'}
-            {/* Event count badge - updates when events are filtered */}
-            <span className="ml-2 text-xs text-muted-foreground font-normal">
-              ({events.length} event{events.length !== 1 ? 's' : ''})
-            </span>
-          </div>
-          {/* Real-time updates toggle */}
-          {/* UI Result: "Real-time" label with toggle switch (on desktop) or just switch (mobile) */}
-          <Label className="flex items-center gap-2 text-sm">
-            <span className="hidden md:inline">Real-time</span>  {/* Label hidden on mobile */}
-            <Switch className="shadow-none" defaultChecked />   {/* Toggle switch, defaults to on */}
-          </Label>
+        {/* Profile Selection Summary */}
+        <div className="text-foreground text-sm font-medium">
+          {activePubkey ? getDisplayName(activePubkey) : 'All Profiles'}
+          <span className="ml-2 text-xs text-muted-foreground font-normal">
+            ({events.length} event{events.length !== 1 ? 's' : ''})
+          </span>
         </div>
         
         {/* Search Input */}
@@ -332,7 +349,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
       {/* RIGHT SIDEBAR CONTENT AREA: Scrollable event list with profile preview */}
       {/* UI Result: Full-height scrollable area below the fixed header */}
       <SidebarContent className="flex-1 min-h-0">                                    {/* Fills remaining height */}
-        <SidebarGroup className="px-0 flex flex-col min-h-0">                       {/* Container for event content */}
+        <SidebarGroup className="p-0 flex flex-1 flex-col min-h-0">                       {/* Container for event content */}
           <SidebarGroupContent className="flex-1 min-h-0 overflow-y-auto">          {/* Scrollable event list */}
             {!isConnected ? (
               // No Connection State
@@ -348,70 +365,18 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
               </div>
             ) : (
               <>
-                {/* PROFILE PREVIEW SECTION: Shows selected author info at top of event list */}
-                {/* UI Result: Highlighted card showing avatar, name, bio, and pubkey of selected author */}
-                <div className="border-b p-2 md:p-4 bg-sidebar-accent/50">          {/* Light background highlight */}
-                  <div className="flex items-start gap-2 md:gap-3">                {/* Horizontal layout with spacing */}
-                    {activePubkey ? (
-                      // Individual Profile Preview - Shows when specific author selected
-                      // UI Result: Large avatar, name, bio snippet, and partial pubkey
-                      <>
-                        <Avatar className="h-10 w-10 md:h-12 md:w-12">            {/* Larger profile picture */}
-                          <AvatarImage 
-                            src={getAvatarUrl(activePubkey) || `https://robohash.org/${activePubkey}`}
-                          />
-                          <AvatarFallback className="text-xs md:text-sm">         {/* Fallback initials */}
-                            {activePubkey.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">                          {/* Text content area */}
-                          {/* Author display name */}
-                          <div className="font-medium text-sm truncate">
-                            {getDisplayName(activePubkey)}
-                          </div>
-                          {/* Author bio/about section (if available) */}
-                          {getProfile(activePubkey)?.about && (
-                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">  {/* Max 2 lines */}
-                              {getProfile(activePubkey)?.about}
-                            </div>
-                          )}
-                          {/* Partial public key display */}
-                          <div className="text-xs text-muted-foreground mt-1 font-mono">     {/* Monospace for key */}
-                            {activePubkey.substring(0, 16)}...
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      // "All Profiles" Preview - Shows when viewing all events
-                      // UI Result: "All" badge with summary of total profiles being shown
-                      <>
-                        <div className="h-10 w-10 md:h-12 md:w-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs md:text-sm font-bold">
-                          All                                                       {/* "All" badge matches left sidebar */}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">
-                            All Profiles                                           {/* Title matches left sidebar selection */}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Showing events from all {uniquePubkeys.length} profile{uniquePubkeys.length !== 1 ? 's' : ''}  {/* Dynamic count */}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
                 {/* EVENT LIST: Main scrollable list of events matching current filters */}
                 {/* UI Result: Scrollable list of clickable event cards below the profile preview */}
                 {events.length > 50 ? (
                   // Performance optimization: Use virtualization for large event lists
-                  // UI Result: Smooth scrolling through hundreds of events without performance issues
-                  <VirtualizedEventList
-                    events={events}                     // Data source for event items
-                    selectedEventId={selectedEvent?.id} // Highlights selected event
-                    onEventSelect={handleEventSelect}   // Handles click interactions
-                    height={400}                        // Fixed height for virtualization
-                  />
+                  <div ref={setEventListNode} className="h-full">
+                    <VirtualizedEventList
+                      events={events}
+                      selectedEventId={selectedEvent?.id}
+                      onEventSelect={handleEventSelect}
+                      height={eventListHeight}
+                    />
+                  </div>
                 ) : (
                   // Regular rendering for smaller event lists (under 50 items)
                   // UI Result: Standard scrollable list with full DOM elements for better debugging
@@ -523,11 +488,6 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
                       ({events.length} event{events.length !== 1 ? 's' : ''})   {/* Dynamic event count */}
                     </span>
                   </div>
-                  {/* Real-time toggle (mobile layout) */}
-                  <Label className="flex items-center gap-2 text-sm">
-                    <Switch className="shadow-none" defaultChecked />     {/* Switch comes first on mobile */}
-                    <span>Real-time</span>                                {/* Label always visible on mobile */}
-                  </Label>
                 </div>
                 {/* Search input (same as desktop) */}
                 <SidebarInput 
@@ -545,7 +505,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
               {/* Mobile Events List: Scrollable area with smaller spacing */}
               {/* UI Result: Scrollable event cards with mobile-optimized sizing */}
               <SidebarContent className="flex-1 min-h-0">
-                <SidebarGroup className="px-0 flex flex-col min-h-0">
+                <SidebarGroup className="p-0 flex flex-1 flex-col min-h-0">
                   <SidebarGroupContent className="flex-1 min-h-0 overflow-y-auto">
                     {!isConnected ? (
                       // Mobile: No connection message (same as desktop)
@@ -559,65 +519,17 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
                       </div>
                     ) : (
                       <>
-                        {/* MOBILE PROFILE PREVIEW: Compact version with smaller avatar */}
-                        {/* UI Result: Similar to desktop but with mobile-optimized spacing */}
-                        <div className="border-b p-2 bg-sidebar-accent/50">        {/* Smaller padding than desktop */}
-                          <div className="flex items-start gap-2">               {/* Smaller gap than desktop */}
-                            {activePubkey ? (
-                              // Individual profile preview (mobile size)
-                              <>
-                                <Avatar className="h-10 w-10">                   {/* Smaller than desktop (h-12 w-12) */}
-                                  <AvatarImage 
-                                    src={getAvatarUrl(activePubkey) || `https://robohash.org/${activePubkey}`} 
-                                  />
-                                  <AvatarFallback className="text-xs">          {/* Smaller text than desktop */}
-                                    {activePubkey.substring(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm truncate">
-                                    {getDisplayName(activePubkey)}
-                                  </div>
-                                  {/* About section (same as desktop) */}
-                                  {getProfile(activePubkey)?.about && (
-                                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                      {getProfile(activePubkey)?.about}
-                                    </div>
-                                  )}
-                                  <div className="text-xs text-muted-foreground mt-1 font-mono">
-                                    {activePubkey.substring(0, 16)}...
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              // "All Profiles" preview (mobile size)
-                              <>
-                                <div className="h-10 w-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
-                                  All                                             {/* Smaller than desktop */}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm">
-                                    All Profiles
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    Showing events from all {uniquePubkeys.length} profile{uniquePubkeys.length !== 1 ? 's' : ''}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        
                         {/* MOBILE EVENT LIST: Smaller height for virtualization */}
                         {/* UI Result: Same event cards as desktop but optimized for mobile screen */}
                         {events.length > 50 ? (
-                          // Virtualized list with smaller height for mobile
-                          <VirtualizedEventList
-                            events={events}
-                            selectedEventId={selectedEvent?.id}
-                            onEventSelect={handleEventSelect}
-                            height={300}
-                          />
+                          <div ref={setEventListNode} className="h-full">
+                            <VirtualizedEventList
+                              events={events}
+                              selectedEventId={selectedEvent?.id}
+                              onEventSelect={handleEventSelect}
+                              height={eventListHeight}
+                            />
+                          </div>
                         ) : (
                           // Regular event list with mobile-optimized spacing
                           events.map((event) => {
@@ -664,7 +576,12 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
           {/* MOBILE FOOTER: User profile (always at bottom) */}
           {/* UI Result: Fixed footer with current user profile info */}
           <SidebarFooter>
-            <NavUser user={mockData.user} />    {/* User avatar and name */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <NavUser user={mockData.user} />
+              </div>
+              <ThemeToggle />
+            </div>
           </SidebarFooter>
         </Sidebar>
       </Sidebar>
@@ -705,8 +622,11 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
         
         {/* DESKTOP LEFT FOOTER: Current user profile info */}
         {/* UI Result: Fixed footer at bottom of left sidebar with user avatar and info */}
-        <div className="flex-shrink-0 p-2">                           {/* Fixed footer, doesn't scroll */}
-          <NavUser user={mockData.user} />                           {/* User avatar, name, and settings */}
+        <div className="flex flex-shrink-0 items-center gap-2 p-2">
+          <div className="flex-1 min-w-0">
+            <NavUser user={mockData.user} />
+          </div>
+          <ThemeToggle />
         </div>
       </div>
 

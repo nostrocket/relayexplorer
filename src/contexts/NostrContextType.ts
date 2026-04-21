@@ -11,6 +11,7 @@ interface NostrContextType {
   relayUrl: string | null;
   relayMetadata: RelayMetadata | null;
   subscriptionKinds: number[] | null;
+  setSubscriptionKinds: (kinds: number[]) => void;
   subscriptionTimeFilter: SubscriptionTimeFilter | null;
   connect: (relayUrl: string, kinds?: number[], timeFilter?: SubscriptionTimeFilter) => Promise<void>;
   disconnect: () => void;
@@ -20,6 +21,7 @@ interface NostrContextType {
   lastEoseTimestamp: Date | null;
   profileEventsMap: Map<string, NDKEvent>;
   recordProfileEvent: (event: NDKEvent) => void;
+  fetchEventById: (id: string) => Promise<NDKEvent | null>;
 }
 
 export const NostrContext = createContext<NostrContextType | undefined>(undefined);
