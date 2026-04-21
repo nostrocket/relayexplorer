@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Copy, Download, Eye, EyeOff, ExternalLink } from "lucide-react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
 import { getRelativeTime } from "@/lib/utils"
+import { useAuthorProfile } from "@/hooks/useAuthorProfile"
 
 interface EventViewerProps {
   event: NDKEvent | null
@@ -13,6 +14,7 @@ interface EventViewerProps {
 
 export function EventViewer({ event }: EventViewerProps) {
   const [showRawJson, setShowRawJson] = useState(false)
+  const authorProfile = useAuthorProfile(event?.pubkey)
 
   if (!event) {
     return (
@@ -32,6 +34,8 @@ export function EventViewer({ event }: EventViewerProps) {
   const createdAt = event.created_at ? new Date(event.created_at * 1000) : new Date()
   const authorShort = event.pubkey ? event.pubkey.substring(0, 16) + '...' : 'Unknown'
   const authorInitials = event.pubkey ? event.pubkey.substring(0, 2).toUpperCase() : 'UN'
+  const authorAvatar = authorProfile?.picture || (event.pubkey ? `https://robohash.org/${event.pubkey}` : undefined)
+  const authorDisplayName = authorProfile?.name || authorShort
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -69,16 +73,19 @@ export function EventViewer({ event }: EventViewerProps) {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between p-4 md:p-6 border-b">
         <div className="flex items-center gap-3 md:gap-4">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={`https://robohash.org/${event.pubkey}`} />
+            <AvatarImage src={authorAvatar} />
             <AvatarFallback className="font-mono text-xs">
               {authorInitials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2 md:mb-1">
-              <h2 className="text-lg md:text-xl font-semibold">Event Kind {event.kind}</h2>
-              <Badge variant="outline">{event.kind}</Badge>
+              <h2 className="text-lg md:text-xl font-semibold truncate">{authorDisplayName}</h2>
+              <Badge variant="outline">Kind {event.kind}</Badge>
             </div>
+            {authorProfile?.nip05 && (
+              <p className="text-xs text-muted-foreground truncate">{authorProfile.nip05}</p>
+            )}
             <p className="text-sm text-muted-foreground font-mono truncate">
               {authorShort}
             </p>

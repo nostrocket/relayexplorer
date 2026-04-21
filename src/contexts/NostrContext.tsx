@@ -20,6 +20,20 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [eoseCount, setEoseCount] = useState(0);
   const [lastEoseTimestamp, setLastEoseTimestamp] = useState<Date | null>(null);
+  const [profileEventsMap, setProfileEventsMap] = useState<Map<string, NDKEvent>>(new Map());
+
+  const recordProfileEvent = useCallback((event: NDKEvent) => {
+    if (event.kind !== 0 || !event.pubkey) return;
+    setProfileEventsMap(prev => {
+      const existing = prev.get(event.pubkey);
+      if (!existing || (event.created_at || 0) > (existing.created_at || 0)) {
+        const next = new Map(prev);
+        next.set(event.pubkey, event);
+        return next;
+      }
+      return prev;
+    });
+  }, []);
   
   // Resource management
   const activeSubscriptions = useRef<Set<NDKSubscription>>(new Set());
@@ -77,8 +91,9 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setConnectionStatus('connecting');
       setConnectionError(null);
       setRelayUrl(url);
-      setSubscriptionKinds(kinds || [0, 1]); // Default to profile and text note kinds
+      setSubscriptionKinds(kinds || [1]); // Default to text notes; profiles are fetched on demand by the batch profile fetcher
       setSubscriptionTimeFilter(timeFilter || null);
+      setProfileEventsMap(new Map()); // Fresh profile store for the new relay
 
       // Cleanup existing connections and subscriptions
       if (ndk) {
@@ -204,6 +219,7 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSubscriptionTimeFilter(null);
     setEoseCount(0);
     setLastEoseTimestamp(null);
+    setProfileEventsMap(new Map());
   }, [ndk]);
 
   const subscribe = useCallback((filter: NDKFilter, callback: (event: NDKEvent) => void): NDKSubscription | null => {
@@ -314,7 +330,9 @@ export const NostrProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       subscribe,
       connectionStatus,
       eoseCount,
-      lastEoseTimestamp
+      lastEoseTimestamp,
+      profileEventsMap,
+      recordProfileEvent,
     }}>
       {children}
     </NostrContext.Provider>

@@ -11,7 +11,7 @@ import type { SubscriptionTimeFilter } from '@/types/app';
 
 export const RelayConnector: React.FC = () => {
   const [inputUrl, setInputUrl] = useState('wss://relay.damus.io');
-  const [eventKinds, setEventKinds] = useState('0,1');
+  const [eventKinds, setEventKinds] = useState('1');
   const [kindsError, setKindsError] = useState<string | null>(null);
   const [timeFilterEnabled, setTimeFilterEnabled] = useState(false);
   const [sinceSeconds, setSinceSeconds] = useState('86400');
@@ -178,7 +178,7 @@ export const RelayConnector: React.FC = () => {
           type="text"
           value={eventKinds}
           onChange={(e) => handleEventKindsChange(e.target.value)}
-          placeholder="0,1"
+          placeholder="1"
           disabled={connectionStatus === 'connecting'}
           className={kindsError ? "border-red-500" : ""}
         />
@@ -186,7 +186,7 @@ export const RelayConnector: React.FC = () => {
           <p className="text-sm text-red-500">{kindsError}</p>
         )}
         <p className="text-xs text-muted-foreground">
-          Default: 0 (profiles), 1 (text notes). Use comma-separated integers for multiple kinds.
+          Default: 1 (text notes). Profiles (kind 0) are fetched on demand. Use comma-separated integers for multiple kinds.
         </p>
       </div>
 

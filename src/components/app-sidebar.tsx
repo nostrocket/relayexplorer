@@ -3,8 +3,8 @@
 // Component imports for building the dual-sidebar relay explorer interface
 // This component creates either a tabbed mobile interface or dual-sidebar desktop layout
 import * as React from "react"
-import { GitBranchIcon } from "lucide-react"
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
+import { BullLogo } from "@/components/bull-logo"
 
 // UI component imports for building the sidebar structure
 import { NavUser } from "@/components/nav-user"        // User profile display at bottom of sidebar
@@ -107,7 +107,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
   const isMobile = useIsMobile()        // UI: Determines layout strategy (tabs vs dual sidebars)
   
   // Data fetching and management
-  const { events: allEvents, profileEvents, updateFilter } = useEvents({})  // Fetches events for right sidebar display
+  const { events: allEvents, profileEvents, updateFilter } = useEvents({}, activePubkey)  // Fetches events; opens a scoped kind-1 sub when a profile is selected
   
   // Profile data processing for left sidebar display
   const { getDisplayName, getAvatarUrl, getProfile } = useProfiles(profileEvents)
@@ -687,7 +687,7 @@ export const AppSidebar = React.memo(({ onEventSelect, ...props }: AppSidebarPro
             <a href="https://github.com/nostrocket/relayexplorer" className="flex items-center gap-2">
               {/* App icon */}
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <GitBranchIcon className="size-4" />                   {/* Git branch icon for relay explorer */}
+                <BullLogo className="size-4" />
               </div>
               {/* App title */}
               <span className="font-semibold">Nostr Rodeo</span>     {/* Clickable title links to GitHub */}

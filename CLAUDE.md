@@ -48,11 +48,9 @@ Event kind metadata (labels, categories, deprecation, NIP references) lives in `
 
 ### Relay discovery
 
-Two discovery paths exist:
-- `src/lib/nostr-watch-relay-discovery.ts` — the one actually wired into `useNIP66RelayDiscovery` (the hook's filename is historical; it uses nostr.watch now).
-- `src/lib/nip66-relay-discovery.ts` + `relay-monitors.ts` — NIP-66 on-network discovery, kept but not the primary path.
+`src/lib/nip66-relay-discovery.ts` + `src/lib/relay-monitors.ts` — NIP-66 on-network discovery via kind-30166 monitor events. The class opens its own NDK pool against a hardcoded `BOOTSTRAP_RELAYS` list (separate from the user-facing connection), subscribes, and streams results back through an `onProgressUpdate` callback. `src/hooks/useNIP66RelayDiscovery.ts` drives it on mount and refreshes every 30 minutes.
 
-`src/lib/relay-data.ts` holds the hardcoded popular-relay fallback list.
+`src/lib/relay-data.ts` holds the hardcoded popular-relay fallback list that's prepended to discovered results so the combobox always has something to show.
 
 ## Conventions
 

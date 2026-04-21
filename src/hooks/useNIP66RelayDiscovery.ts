@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { NostrWatchRelayDiscovery } from '@/lib/nostr-watch-relay-discovery';
+import { NIP66RelayDiscovery } from '@/lib/nip66-relay-discovery';
 import type { RelayDiscoveryState, NIP66Relay } from '@/types/app';
 
 export const useNIP66RelayDiscovery = () => {
@@ -10,25 +10,23 @@ export const useNIP66RelayDiscovery = () => {
     error: null,
     lastUpdated: null
   });
-  
-  const discoveryRef = useRef<NostrWatchRelayDiscovery | null>(null);
+
+  const discoveryRef = useRef<NIP66RelayDiscovery | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize discovery service immediately
   useEffect(() => {
     if (!discoveryRef.current) {
-      discoveryRef.current = new NostrWatchRelayDiscovery();
+      discoveryRef.current = new NIP66RelayDiscovery();
     }
   }, []);
 
   const discoverRelays = useCallback(async (): Promise<void> => {
     if (!discoveryRef.current) {
-      console.warn('nostr.watch discovery service not initialized');
+      console.warn('NIP-66 discovery service not initialized');
       return;
     }
 
-    // The NostrWatchRelayDiscovery service handles all errors internally
-    // and never throws - it always returns valid state with fallbacks
     await discoveryRef.current.discoverRelays((progressState) => {
       setState(progressState);
     });

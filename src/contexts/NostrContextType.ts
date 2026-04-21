@@ -18,6 +18,8 @@ interface NostrContextType {
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   eoseCount: number;
   lastEoseTimestamp: Date | null;
+  profileEventsMap: Map<string, NDKEvent>;
+  recordProfileEvent: (event: NDKEvent) => void;
 }
 
 export const NostrContext = createContext<NostrContextType | undefined>(undefined);
